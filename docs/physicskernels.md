@@ -83,11 +83,11 @@ After the egestion, they are incorporated into fecal pellets that differ in dens
 
 In this framework, the settling velocity of a particle is computed based on the difference between the particle's density and that of the surrounding seawater. We assume that the organic matter enveloping the plastic particle is remineralized, as time passes by, according to the equation describing the variation of its equivalent radius: {math}`a`:
 
-```{math}
-\frac{\text{d}a}{\text{d}t} := - \text{C} \text{r} \, a^{\text{n}-2}.
-```
+$$
+\frac{\text{d}a}{\text{d}t} := - \text{C} \ \text{r} \ a^{\text{n}-2}.
+$$
 
-Where  \text{C}, \text{r} and \text{n} are the remineralization constant, the remineralization rate and a constant related to the type of remineralization.
+Where  $\text{C}$, $\text{r}$ and $\text{n}$ are the remineralization constant, the remineralization rate and a constant related to the type of remineralization.
 
 
 ### Sea-ice capture
