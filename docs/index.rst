@@ -44,7 +44,7 @@ Just like the ``parcels`` framework, ``plasticparcels`` can be adapted to use ot
 Community Guidelines
 ^^^^^^^^^^^^^^^^^^^^
 
-We welcome contributions to ``plasticparcels``, especially example workbooks and analyses for our `public examples page <https://plastic.oceanparcels.org/en/latest/examples.html>`_. To contribute to the project, please submit a `pull request <https://github.com/OceanParcels/plasticparcels/pulls>`_.
+We welcome contributions to ``plasticparcels``, especially example workbooks and analyses for our `public examples page <https://plastic.parcels-code.org/en/latest/examples.html>`_. To contribute to the project, please submit a `pull request <https://github.com/OceanParcels/plasticparcels/pulls>`_.
 If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the `plasticparcels issue tracker <https://github.com/OceanParcels/plasticparcels/issues>`_.
 If you would like support using ``plasticparcels``, or are have any questions about your ``plasticparcels`` simulations, please start a discussion in the `plasticparcels discussion page <https://github.com/OceanParcels/plasticparcels/discussions>`_.
 
@@ -57,4 +57,4 @@ If you would like support using ``plasticparcels``, or are have any questions ab
    Physics kernels <physicskernels>
    Plastic initialisation maps <initialisationmaps>
    API reference <reference/index>
-   OceanParcels website <https://oceanparcels.org/>
+   OceanParcels website <https://parcels-code.org/>

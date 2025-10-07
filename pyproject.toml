@@ -7,7 +7,7 @@ name = "plasticparcels"
 description = "Package for simulating the transport and dispersion of plastics in the ocean."
 readme = "README.md"
 dynamic = ["version"]
-authors = [{ name = "oceanparcels.org team" }]
+authors = [{ name = "PlasticParcels developers" }]
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
 classifiers = [
@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://oceanparcels.org/"
+homepage = "https://parcels-code.org/"
 repository = "https://github.com/OceanParcels/plasticparcels/"
 tracker = "https://github.com/OceanParcels/plasticparcels/issues"
 
