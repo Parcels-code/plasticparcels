@@ -26,17 +26,17 @@ For downloading the wind and wave data, we recommend using the [CDS API](https:/
 
 To run most of the examples, you will need to update the data directories in the relevant settings `.json` file.
 
-Just like the `parcels` framework, `plasticparcels` can be adapted to use other hydrodynamic, biogeochemical, wave, and atmospheric models. If you require assistance, please contact us through the [`plasticparcels` discussions page](https://github.com/OceanParcels/plasticparcels/discussions).
+Just like the `parcels` framework, `plasticparcels` can be adapted to use other hydrodynamic, biogeochemical, wave, and atmospheric models. If you require assistance, please contact us through the [`plasticparcels` discussions page](https://github.com/Parcels-code/plasticparcels/discussions).
 
 ### Community contributions and support
 #### Contributing code
-We welcome contributions to `plasticparcels`, especially example workbooks and analyses for our [public examples page](https://plastic.parcels-code.org/en/latest/examples.html). To contribute to the project, please submit a [pull request](https://github.com/OceanParcels/plasticparcels/pulls).
+We welcome contributions to `plasticparcels`, especially example workbooks and analyses for our [public examples page](https://plastic.parcels-code.org/en/latest/examples.html). To contribute to the project, please submit a [pull request](https://github.com/Parcels-code/plasticparcels/pulls).
 
 #### Requesting features and reporting issues/bugs
-If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the [`plasticparcels` issue tracker](https://github.com/OceanParcels/plasticparcels/issues).
+If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the [`plasticparcels` issue tracker](https://github.com/Parcels-code/plasticparcels/issues).
 
 #### Seeking support?
-If you would like support using `plasticparcels`, or are have any questions about your `plasticparcels` simulations, please start a discussion in the [`plasticparcels` discussion page](https://github.com/OceanParcels/plasticparcels/discussions).
+If you would like support using `plasticparcels`, or are have any questions about your `plasticparcels` simulations, please start a discussion in the [`plasticparcels` discussion page](https://github.com/Parcels-code/plasticparcels/discussions).
 
 
 
@@ -45,7 +45,7 @@ If you would like support using `plasticparcels`, or are have any questions abou
 For more information and documentation, see the [plasticparcels documentation](https://plastic.parcels-code.org/).
 
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.07094/status.svg)](https://doi.org/10.21105/joss.07094)
-[![unit-tests](https://github.com/OceanParcels/plasticparcels/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/OceanParcels/plasticparcels/actions/workflows/unit_tests.yml)
+[![unit-tests](https://github.com/Parcels-code/plasticparcels/actions/workflows/unit_tests.yml/badge.svg)](https://github.com/Parcels-code/plasticparcels/actions/workflows/unit_tests.yml)
 [![Anaconda-release](https://anaconda.org/conda-forge/plasticparcels/badges/version.svg)](https://anaconda.org/conda-forge/plasticparcels/)
 [![Anaconda-date](https://anaconda.org/conda-forge/plasticparcels/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/plasticparcels/)
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.11388383.svg)](https://doi.org/10.5281/zenodo.11388383)

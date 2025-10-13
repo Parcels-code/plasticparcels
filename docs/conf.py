@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath('..')) # Allow to find `plasticparcels` packa
 import plasticparcels
 
 project = 'plasticparcels'
-copyright = f'{datetime.datetime.now().year}, The OceanParcels Team'
-author = 'The OceanParcels Team'
+copyright = f'{datetime.datetime.now().year}, The Parcels Team'
+author = 'The Parcels Team'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -56,7 +56,7 @@ html_theme_options = {
         "image_dark": "plasticparcelslogo_inverted.png",
     },
     # "use_edit_page_button": True,
-    "github_url": "https://github.com/OceanParcels/plasticparcels",
+    "github_url": "https://github.com/Parcels-code/plasticparcels",
     "icon_links": [
         {
             "name": "Conda Forge",
@@ -144,9 +144,9 @@ def linkcode_resolve(domain, info):
     fn = os.path.relpath(fn, start=os.path.dirname(plasticparcels.__file__))
 
     if is_non_standard_version(plasticparcels.__version__):
-        return f"https://github.com/OceanParcels/plasticparcels/blob/main/plasticparcels/{fn}{linespec}"
+        return f"https://github.com/Parcels-code/plasticparcels/blob/main/plasticparcels/{fn}{linespec}"
     else:
         return (
-            f"https://github.com/OceanParcels/plasticparcels/blob/"
+            f"https://github.com/Parcels-code/plasticparcels/blob/"
             f"v{plasticparcels.__version__}/plasticparcels/{fn}{linespec}"
         )

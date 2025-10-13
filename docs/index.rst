@@ -22,7 +22,7 @@ Installation
    conda install conda-forge::plasticparcels
 
 
-Or downloaded from https://github.com/OceanParcels/plasticparcels
+Or downloaded from https://github.com/Parcels-code/plasticparcels
 
 
 Required Data
@@ -39,14 +39,14 @@ For downloading the wind and wave data, we recommend using the `CDS API <https:/
 
 To run the examples, you will need to update the data directories in the relevant settings ``.json`` file.
 
-Just like the ``parcels`` framework, ``plasticparcels`` can be adapted to use other hydrodynamic, biogeochemical, wave, and atmospheric models. If you require assistance, please contact us through the `Discussions page on GitHub <https://github.com/OceanParcels/plasticparcels/discussions>`_.
+Just like the ``parcels`` framework, ``plasticparcels`` can be adapted to use other hydrodynamic, biogeochemical, wave, and atmospheric models. If you require assistance, please contact us through the `Discussions page on GitHub <https://github.com/Parcels-code/plasticparcels/discussions>`_.
 
 Community Guidelines
 ^^^^^^^^^^^^^^^^^^^^
 
-We welcome contributions to ``plasticparcels``, especially example workbooks and analyses for our `public examples page <https://plastic.parcels-code.org/en/latest/examples.html>`_. To contribute to the project, please submit a `pull request <https://github.com/OceanParcels/plasticparcels/pulls>`_.
-If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the `plasticparcels issue tracker <https://github.com/OceanParcels/plasticparcels/issues>`_.
-If you would like support using ``plasticparcels``, or are have any questions about your ``plasticparcels`` simulations, please start a discussion in the `plasticparcels discussion page <https://github.com/OceanParcels/plasticparcels/discussions>`_.
+We welcome contributions to ``plasticparcels``, especially example workbooks and analyses for our `public examples page <https://plastic.parcels-code.org/en/latest/examples.html>`_. To contribute to the project, please submit a `pull request <https://github.com/Parcels-code/plasticparcels/pulls>`_.
+If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the `plasticparcels issue tracker <https://github.com/Parcels-code/plasticparcels/issues>`_.
+If you would like support using ``plasticparcels``, or are have any questions about your ``plasticparcels`` simulations, please start a discussion in the `plasticparcels discussion page <https://github.com/Parcels-code/plasticparcels/discussions>`_.
 
 .. toctree::
    :maxdepth: 2
@@ -57,4 +57,4 @@ If you would like support using ``plasticparcels``, or are have any questions ab
    Physics kernels <physicskernels>
    Plastic initialisation maps <initialisationmaps>
    API reference <reference/index>
-   OceanParcels website <https://parcels-code.org/>
+   Parcels website <https://parcels-code.org/>
