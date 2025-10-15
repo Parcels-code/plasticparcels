@@ -21,7 +21,7 @@ def StokesDrift(particle, fieldset, time):
     where :math:`u_c` is the current velocity, :math:`u_s` is the Stokes drift velocity,
     and :math:`C_s` is the depth-varying decay factor.
 
-    For further description, see https://plastic.oceanparcels.org/en/latest/physicskernels.html#stokes-drift
+    For further description, see https://plastic.parcels-code.org/en/latest/physicskernels.html#stokes-drift
 
     Parameter Requirements
     ----------
@@ -83,7 +83,7 @@ def WindageDrift(particle, fieldset, time):
     at 10m height, and :math:`C_w` is the windage coefficient (usually taken to
     be in [1%,5%], depending on particle size)
 
-    For further description, see https://plastic.oceanparcels.org/en/latest/physicskernels.html#wind-induced-drift-leeway
+    For further description, see https://plastic.parcels-code.org/en/latest/physicskernels.html#wind-induced-drift-leeway
 
     Parameter Requirements
     ----------

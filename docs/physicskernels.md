@@ -1,6 +1,6 @@
 # Physics kernels
 
-The [`parcels`](https://oceanparcels.org/) Lagrangian framework is a tool for advecting virtual particles that are assumed to be spherical in shape. It works by numerically integrating the velocity fields from a hydrodynamic model while including any additional \textit{behaviour} of the particle. Mathematically, particle trajectories are computed by solving the following equation:
+The [`parcels`](https://parcels-code.org/) Lagrangian framework is a tool for advecting virtual particles that are assumed to be spherical in shape. It works by numerically integrating the velocity fields from a hydrodynamic model while including any additional \textit{behaviour} of the particle. Mathematically, particle trajectories are computed by solving the following equation:
 
 ```{math}
 \mathbf{x}(t) = \mathbf{x}(0) + \int_{0}^{t} \mathbf{v}(\mathbf{x}(s), s) + \mathbf{B}(\mathbf{x}(s),s) \text{d}s,
@@ -14,7 +14,7 @@ Numerically, we solve the above equation using a time-stepping approach, where w
 \frac{\text{d}\mathbf{x}(t)}{\text{d}t} = \mathbf{v}(\mathbf{x}(t), t) + \mathbf{B}(\mathbf{x}(t), t),
 ```
 
-and updating the particle position at each timestep. For simplicity, by default we use the fourth-order Runge-Kutta scheme of [`parcels`](https://oceanparcels.org/) to solve the advection of the particle from the hydrodynamic model velocity field {math}`\mathbf{v}`, and an Euler-forward scheme for all other additional behaviours realised in {math}`\mathbf{B}`.
+and updating the particle position at each timestep. For simplicity, by default we use the fourth-order Runge-Kutta scheme of [`parcels`](https://parcels-code.org/) to solve the advection of the particle from the hydrodynamic model velocity field {math}`\mathbf{v}`, and an Euler-forward scheme for all other additional behaviours realised in {math}`\mathbf{B}`.
 
 
 ### Stokes drift
