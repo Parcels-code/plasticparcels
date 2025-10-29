@@ -39,10 +39,6 @@ def StokesDrift(particle, fieldset, time):
     [1] Breivik (2016) - https://doi.org/10.1016/j.ocemod.2016.01.005
 
     """
-    # Sample the U / V components of Stokes drift
-    stokes_U = fieldset.Stokes_U[time, particle.depth, particle.lat, particle.lon]
-    stokes_V = fieldset.Stokes_V[time, particle.depth, particle.lat, particle.lon]
-
     # Sample the peak wave period
     T_p = fieldset.wave_Tp[time, particle.depth, particle.lat, particle.lon]
 
@@ -51,6 +47,10 @@ def StokesDrift(particle, fieldset, time):
 
     # Only compute displacements if the peak wave period is large enough and the particle is in the water
     if T_p > 1E-14 and particle.depth < local_bathymetry:
+        # Sample the U / V components of Stokes drift
+        stokes_U = fieldset.Stokes_U[time, particle.depth, particle.lat, particle.lon]
+        stokes_V = fieldset.Stokes_V[time, particle.depth, particle.lat, particle.lon]
+
         # Peak wave frequency
         omega_p = 2. * math.pi / T_p
 
