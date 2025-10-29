@@ -629,6 +629,34 @@ def checkThroughBathymetry(particle, fieldset, time):
     elif potential_depth > 3900.:  # If particle >3.9km deep, stick it there
         particle_ddepth = 3900. - particle.depth  # noqa
 
+def reflectAtBathymetry(particle, fieldset, time):
+    """Reflect at bathymetry kernel.
+
+    Description
+    ----------
+    A simple kernel to reflect particles at the ocean bathymetry, if they go through the bathymetry.
+
+    Parameter Requirements
+    ----------
+    Fieldset:
+        - `fieldset.bathymetry` - A 2D field containing the ocean bathymetry. Units [m].
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all other movement kernels, as it samples the
+        bathymetry field using the updated particle position.
+    """
+    local_bathymetry = fieldset.bathymetry[time, particle.depth, particle.lat, particle.lon]
+    potential_depth = particle.depth + particle_ddepth
+
+    if potential_depth > 100:
+        local_bathymetry = 0.99*local_bathymetry # Handle linear interpolation issues for deep particles
+    
+    if potential_depth > local_bathymetry:
+        beyond_depth = potential_depth - local_bathymetry
+        particle.depth = local_bathymetry - beyond_depth # Reflect the particle back above the bathymetry
+        particle_ddepth = 0. # Set particle_ddepth to 0, as we have already updated the depth
 
 
 def periodicBC(particle, fieldset, time):
