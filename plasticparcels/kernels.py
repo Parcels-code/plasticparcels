@@ -102,13 +102,13 @@ def WindageDrift(particle, fieldset, time):
     (ocean_U, ocean_V) = fieldset.UV[particle]
     ocean_speed = math.sqrt(ocean_U**2 + ocean_V**2)
 
-    # Sample the U / V components of wind
-    wind_U = fieldset.Wind_U[time, particle.depth, particle.lat, particle.lon]
-    wind_V = fieldset.Wind_V[time, particle.depth, particle.lat, particle.lon]
-
     # Apply windage to particles that have some exposed surface above the ocean surface
     # Use a basic approach to only apply windage to particle in the ocean
-    if particle.depth < 0.5*particle.plastic_diameter and ocean_speed > 1E-12:
+    if particle.depth < 0.5*particle.plastic_diameter and ocean_speed > 1E-14:
+        # Sample the U / V components of wind
+        wind_U = fieldset.Wind_U[time, particle.depth, particle.lat, particle.lon]
+        wind_V = fieldset.Wind_V[time, particle.depth, particle.lat, particle.lon]
+
         # Compute particle displacement
         particle_dlon += particle.wind_coefficient * (wind_U - ocean_U) * particle.dt  # noqa
         particle_dlat += particle.wind_coefficient * (wind_V - ocean_V) * particle.dt  # noqa
