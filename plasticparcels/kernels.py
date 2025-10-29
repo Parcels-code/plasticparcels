@@ -534,6 +534,7 @@ def VerticalMixing(particle, fieldset, time):
     # Update particle position
     particle_ddepth += ddepth  # noqa
 
+
 def reflectAtSurface(particle, fieldset, time):
     """A reflecting boundary condition kernel at the ocean surface.
 
@@ -595,6 +596,103 @@ def unbeaching(particle, fieldset, time):
         particle_dlon += dlon  # noqa
         particle_dlat += dlat  # noqa
 
+def unbeachingBySamplingAfterwards(particle, fieldset, time):
+    """Alternative unbeaching kernel.
+
+    Description
+    ----------
+    A kernel to 'unbeach' particles that have been advected onto non-ocean grid cells.
+    This kernel samples the velocity field in the four cardinal directions around the particle,
+    and moves the particle in the direction of the highest velocity magnitude, assuming that
+    this direction is the ocean direction. This kernel only acts if the particle displacement
+    in both zonal and meridional directions is (near) zero, indicating that the particle is beached.
+
+    Parameter Requirements
+    ----------
+    Fieldset:
+        None
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all other movement kernels.
+    """
+    # In the case of being beached, these displacement will be zero
+    new_lon = particle.lon + particle_dlon
+    new_lat = particle.lat + particle_dlat
+    new_depth = particle.depth + particle_ddepth
+
+    if math.fabs(particle_dlon) + math.fabs(particle_dlat) < 1e-14:
+        displacement = 1./8. # Degree displacement to sample the velocity field
+
+        # Convert 1m/s to degrees/s at the particle latitude in zonal and meridional directions
+        unbeach_U = 1. / (1852. * 60. * math.cos(particle.lat * math.pi / 180.))
+        unbeach_V = 1. / (1852. * 60.)
+
+        # Sample the velocity field in the four cardinal directions
+        (U_left, V_left) = fieldset.UV[time, new_depth, new_lat, new_lon - displacement]
+        (U_right, V_right) = fieldset.UV[time, new_depth, new_lat, new_lon + displacement]
+        (U_up, V_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon]
+        (U_down, V_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon]
+
+        # Find the direction of the highest velocity
+        left = math.sqrt(U_left**2 + V_left**2)
+        right = math.sqrt(U_right**2 + V_right**2)
+        up = math.sqrt(U_up**2 + V_up**2)
+        down = math.sqrt(U_down**2 + V_down**2)
+        
+        max_vel = 0.
+        U_dir = 0.
+        V_dir = 0.
+        
+        if left + right + up + down > 1e-14:
+            max_vel = left
+            U_dir = -1.
+            V_dir = 0.
+            if max_vel < right:
+                max_vel = right
+                U_dir = 1.
+                V_dir = 0.
+            if max_vel < up:
+                max_vel = up
+                U_dir = 0.
+                V_dir = 1.
+            if max_vel < down:
+                max_vel = down
+                U_dir = 0.
+                V_dir = -1.
+
+        # If all four cardinal directions are zero, check diagonal directions
+        else:
+            (U_left_up, V_left_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon - displacement]
+            (U_left_down, V_left_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon - displacement]
+            (U_right_up, V_right_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon + displacement]
+            (U_right_down, V_right_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon + displacement]
+
+            left_up = math.sqrt(U_left_up**2 + V_left_up**2)
+            left_down = math.sqrt(U_left_down**2 + V_left_down**2)
+            right_up = math.sqrt(U_right_up**2 + V_right_up**2)
+            right_down = math.sqrt(U_right_down**2 + V_right_down**2)
+
+            max_vel = left_up
+            U_dir = -1.
+            V_dir = 1.
+            if max_vel < left_down:
+                max_vel = left_down
+                U_dir = 1.
+                V_dir = -1.
+            if max_vel < right_up:
+                max_vel = right_up
+                U_dir = 1.
+                V_dir = 1.
+            if max_vel < right_down:
+                max_vel = right_down
+                U_dir = 1.
+                V_dir = -1.
+
+        particle_dlon += U_dir * unbeach_U * particle.dt
+        particle_dlat += V_dir * unbeach_V * particle.dt
+
 
 def checkThroughBathymetry(particle, fieldset, time):
     """Bathymetry error kernel.
@@ -628,6 +726,7 @@ def checkThroughBathymetry(particle, fieldset, time):
 
     elif potential_depth > 3900.:  # If particle >3.9km deep, stick it there
         particle_ddepth = 3900. - particle.depth  # noqa
+
 
 def reflectAtBathymetry(particle, fieldset, time):
     """Reflect at bathymetry kernel.
