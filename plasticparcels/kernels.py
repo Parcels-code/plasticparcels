@@ -641,11 +641,11 @@ def unbeachingBySamplingAfterwards(particle, fieldset, time):
         right = math.sqrt(U_right**2 + V_right**2)
         up = math.sqrt(U_up**2 + V_up**2)
         down = math.sqrt(U_down**2 + V_down**2)
-        
+
         max_vel = 0.
         U_dir = 0.
         V_dir = 0.
-        
+
         if left + right + up + down > 1e-14:
             max_vel = left
             U_dir = -1.
@@ -752,7 +752,7 @@ def reflectAtBathymetry(particle, fieldset, time):
 
     if potential_depth > 100:
         local_bathymetry = 0.99*local_bathymetry # Handle linear interpolation issues for deep particles
-    
+
     if potential_depth > local_bathymetry:
         beyond_depth = potential_depth - local_bathymetry
         particle.depth = local_bathymetry - beyond_depth # Reflect the particle back above the bathymetry
