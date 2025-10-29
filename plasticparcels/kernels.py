@@ -161,15 +161,15 @@ def SettlingVelocity(particle, fieldset, time):
     g = fieldset.G  # gravitational acceleration [m s-2]
     seawater_density = particle.seawater_density  # [kg m-3]
     temperature = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
-    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000
+    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000.
     particle_diameter = particle.plastic_diameter
     particle_density = particle.plastic_density
 
     # Compute the kinematic viscosity of seawater
     water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
-    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2  # Eq. (28) from [2]
-    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2  # Eq. (29) from [2]
-    seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
+    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2.  # Eq. (28) from [2]
+    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2.  # Eq. (29) from [2]
+    seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2.)  # Eq. (27) from [2]
     seawater_kinematic_viscosity = seawater_dynamic_viscosity / seawater_density  # Eq. (25) from [2]
 
     # Compute the density difference of the particle
@@ -179,7 +179,7 @@ def SettlingVelocity(particle, fieldset, time):
     dimensionless_diameter = (math.fabs(particle_density - seawater_density) * g * particle_diameter ** 3.) / (seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
+    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
         dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
     elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
         dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
@@ -271,9 +271,9 @@ def Biofouling(particle, fieldset, time):
     initial_settling_velocity = particle.settling_velocity  # settling velocity [m s-1]
 
     # Compute the seawater dynamic viscosity and kinematic viscosity
-    water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
-    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2  # Eq. (28) from [2]
-    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2  # Eq. (29) from [2]
+    water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2.) - 91.296))  # Eq. (26) from [2]
+    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2.  # Eq. (28) from [2]
+    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2.  # Eq. (29) from [2]
     seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
     seawater_kinematic_viscosity = seawater_dynamic_viscosity / particle.seawater_density  # Eq. (25) from [2]
 
@@ -282,7 +282,7 @@ def Biofouling(particle, fieldset, time):
     mol_concentration_diatoms = fieldset.bio_diatom[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Diatoms expressed as carbon in sea water
     mol_concentration_nanophytoplankton = fieldset.bio_nanophy[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Nanophytoplankton expressed as carbon in seawater
     total_primary_production_of_phyto = fieldset.pp_phyto[time, particle.depth, particle.lat, particle.lon]  # mg C /m3/day #pp_phyto_
-    median_mg_carbon_per_cell = 2726e-9  # Median mg of Carbon per cell selected from [3]. From [2] pg7966 - "The conversion from carbon to algae cells is highly variable, ranging between 35339 to 47.76 pg per carbon cell [3]. We choose the median value, 2726 x 10^-9 mg per carbon cell."
+    median_mg_carbon_per_cell = 2726.0E-9  # Median mg of Carbon per cell selected from [3]. From [2] pg7966 - "The conversion from carbon to algae cells is highly variable, ranging between 35339 to 47.76 pg per carbon cell [3]. We choose the median value, 2726 x 10^-9 mg per carbon cell."
     # carbon_molecular_weight = fieldset.carbon_molecular_weight # grams C per mol of C #Wt_C
 
     # Compute concentration numbers
@@ -350,7 +350,7 @@ def Biofouling(particle, fieldset, time):
     dimensionless_diameter = (math.fabs(total_density - particle.seawater_density) * fieldset.G * particle_diameter ** 3.) / (particle.seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
+    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
         dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
     elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
         dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
