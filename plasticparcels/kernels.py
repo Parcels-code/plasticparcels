@@ -584,7 +584,7 @@ def unbeaching(particle, fieldset, time):
         unbeaching field using the updated particle position.
     """
     # Measure the velocity field at the final particle location
-    (vel_u, vel_v, vel_w) = fieldset.UVW[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
+    (vel_u, vel_v) = fieldset.UV[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
 
     if math.fabs(vel_u) < 1e-14 and math.fabs(vel_v) < 1e-14:
         U_ub = fieldset.unbeach_U[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
@@ -595,6 +595,7 @@ def unbeaching(particle, fieldset, time):
 
         particle_dlon += dlon  # noqa
         particle_dlat += dlat  # noqa
+
 
 def unbeachingBySamplingAfterwards(particle, fieldset, time):
     """Alternative unbeaching kernel.
