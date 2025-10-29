@@ -556,10 +556,10 @@ def reflectAtSurface(particle, fieldset, time):
     None
 
     """
-    potential_depth = particle.depth + particle_ddepth
+    potential_depth = particle.depth + particle_ddepth  # noqa
     if potential_depth < 0.:# Particle is above the surface
         particle.depth = -potential_depth
-        particle_ddepth = 0. # Set particle_ddepth to 0, as we have already updated the depth
+        particle_ddepth = 0.  # noqa
 
 
 def unbeaching(particle, fieldset, time):
@@ -619,11 +619,11 @@ def unbeachingBySamplingAfterwards(particle, fieldset, time):
         This kernel should be performed after all other movement kernels.
     """
     # In the case of being beached, these displacement will be zero
-    new_lon = particle.lon + particle_dlon
-    new_lat = particle.lat + particle_dlat
-    new_depth = particle.depth + particle_ddepth
+    new_lon = particle.lon + particle_dlon  # noqa
+    new_lat = particle.lat + particle_dlat  # noqa
+    new_depth = particle.depth + particle_ddepth  # noqa
 
-    if math.fabs(particle_dlon) + math.fabs(particle_dlat) < 1e-14:
+    if math.fabs(particle_dlon) + math.fabs(particle_dlat) < 1e-14:  # noqa
         displacement = 1./8. # Degree displacement to sample the velocity field
 
         # Convert 1m/s to degrees/s at the particle latitude in zonal and meridional directions
@@ -691,8 +691,8 @@ def unbeachingBySamplingAfterwards(particle, fieldset, time):
                 U_dir = 1.
                 V_dir = -1.
 
-        particle_dlon += U_dir * unbeach_U * particle.dt
-        particle_dlat += V_dir * unbeach_V * particle.dt
+        particle_dlon += U_dir * unbeach_U * particle.dt  # noqa
+        particle_dlat += V_dir * unbeach_V * particle.dt  # noqa
 
 
 def checkThroughBathymetry(particle, fieldset, time):
@@ -748,7 +748,7 @@ def reflectAtBathymetry(particle, fieldset, time):
         bathymetry field using the updated particle position.
     """
     local_bathymetry = fieldset.bathymetry[time, particle.depth, particle.lat, particle.lon]
-    potential_depth = particle.depth + particle_ddepth
+    potential_depth = particle.depth + particle_ddepth  # noqa
 
     if potential_depth > 100:
         local_bathymetry = 0.99*local_bathymetry # Handle linear interpolation issues for deep particles
@@ -756,7 +756,7 @@ def reflectAtBathymetry(particle, fieldset, time):
     if potential_depth > local_bathymetry:
         beyond_depth = potential_depth - local_bathymetry
         particle.depth = local_bathymetry - beyond_depth # Reflect the particle back above the bathymetry
-        particle_ddepth = 0. # Set particle_ddepth to 0, as we have already updated the depth
+        particle_ddepth = 0.  # noqa
 
 
 def periodicBC(particle, fieldset, time):
