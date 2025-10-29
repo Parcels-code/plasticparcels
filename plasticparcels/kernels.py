@@ -402,7 +402,7 @@ def PolyTEOS10_bsq(particle, fieldset, time):
       Oceanic Technology, 20, 730-741.
 
     """
-    Z = - particle.depth  # note: use negative depths!
+    Z = - math.fabs(particle.depth)  # note: use negative depths!
     SA = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon]
     CT = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
 
@@ -410,6 +410,16 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     CTu = 40.
     Zu = 1.0e+04
     deltaS = 32.
+
+    zz = -Z / Zu
+    R00 = 4.6494977072e+01
+    R01 = -5.2099962525e+00
+    R02 = 2.2601900708e-01
+    R03 = 6.4326772569e-02
+    R04 = 1.5616995503e-02
+    R05 = -1.7243708991e-03
+    r0 = (((((R05 * zz + R04) * zz + R03) * zz + R02) * zz + R01) * zz + R00) * zz
+
     R000 = 8.0189615746e+02
     R100 = 8.6672408165e+02
     R200 = -1.7864682637e+03
@@ -469,8 +479,9 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     rz2 = (R022 * tt + R112 * ss + R012) * tt + (R202 * ss + R102) * ss + R002
     rz1 = (((R041 * tt + R131 * ss + R031) * tt + (R221 * ss + R121) * ss + R021) * tt + ((R311 * ss + R211) * ss + R111) * ss + R011) * tt + (((R401 * ss + R301) * ss + R201) * ss + R101) * ss + R001
     rz0 = (((((R060 * tt + R150 * ss + R050) * tt + (R240 * ss + R140) * ss + R040) * tt + ((R330 * ss + R230) * ss + R130) * ss + R030) * tt + (((R420 * ss + R320) * ss + R220) * ss + R120) * ss + R020) * tt + ((((R510 * ss + R410) * ss + R310) * ss + R210) * ss + R110) * ss + R010) * tt + (((((R600 * ss + R500) * ss + R400) * ss + R300) * ss + R200) * ss + R100) * ss + R000
-    particle.seawater_density = ((rz3 * zz + rz2) * zz + rz1) * zz + rz0
-    # particle.sw_surface_density = rz0
+    r = ((rz3 * zz + rz2) * zz + rz1) * zz + rz0
+
+    particle.seawater_density = r0 + r
 
 
 def VerticalMixing(particle, fieldset, time):
