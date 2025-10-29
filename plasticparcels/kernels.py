@@ -489,7 +489,7 @@ def VerticalMixing(particle, fieldset, time):
 
     Description
     ----------
-    A simple verticle mixing kernel that uses a markov-0 process to determine the vertical
+    A simple vertical mixing kernel that uses a markov-0 process to determine the vertical
     displacement of a particle [1]. The deterministic component is determined
     using forward-difference with a given `delta_z`.
 
@@ -524,7 +524,6 @@ def VerticalMixing(particle, fieldset, time):
 
     # Compute the random walk component of Eq. (1)
     dz_random = ParcelsRandom.uniform(-1., 1.) * math.sqrt(math.fabs(particle.dt) * 3) * math.sqrt(2 * kz)
-    # TODO - implement the reflective boundary condition
 
     # Compute rise velocity component of Eq. (1) - Already accounted for in other kernels
     dz_wb = 0  # particle.settling_velocity * particle.dt
@@ -535,7 +534,31 @@ def VerticalMixing(particle, fieldset, time):
     # Update particle position
     particle_ddepth += ddepth  # noqa
 
-# Biofouling related kernels
+def reflectAtSurface(particle, fieldset, time):
+    """A reflecting boundary condition kernel at the ocean surface.
+
+    Description
+    ----------
+    A simple kernel to reflect particles at the ocean surface if they go through the surface.
+
+    Parameter Requirements
+    ----------
+    None
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all vertical displacement kernels have been applied.
+
+    References
+    ----------
+    None
+
+    """
+    potential_depth = particle.depth + particle_ddepth
+    if potential_depth < 0.:# Particle is above the surface
+        particle.depth = -potential_depth
+        particle_ddepth = 0. # Set particle_ddepth to 0, as we have already updated the depth
 
 
 def unbeaching(particle, fieldset, time):
