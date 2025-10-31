@@ -282,7 +282,7 @@ def test_TEOSdensity_kernels(mode):
     data, dimensions = generate_fieldset()
     fieldset = parcels.FieldSet.from_data(data, dimensions)
 
-    release_locations = {'lons': [5], 'lats': [5],
+    release_locations = {'lons': [5], 'lats': [5], 'depths': [1000],
                          'plastic_amount': [1]}
 
     pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
