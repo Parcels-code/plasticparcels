@@ -232,6 +232,11 @@ def create_particleset(fieldset, settings, release_locations):
     else:
         plastic_amounts = np.full_like(lons, np.nan)
 
+    if 'depths' in release_locations.keys():
+        depths = release_locations['depths']
+    else:
+        depths = np.full_like(lons, 0.)
+
     # Set particle properties
     plastic_densities = np.full(lons.shape, settings['plastictype']['plastic_density'])
     plastic_diameters = np.full(lons.shape, settings['plastictype']['plastic_diameter'])
@@ -254,6 +259,7 @@ def create_particleset(fieldset, settings, release_locations):
                                  PlasticParticle,
                                  lon=lons,
                                  lat=lats,
+                                 depth=depths,
                                  plastic_diameter=plastic_diameters,
                                  plastic_density=plastic_densities,
                                  wind_coefficient=wind_coefficients,
