@@ -243,3 +243,50 @@ def test_mixing():
 
     # Assert that the particles move from their initial location
     assert (np.sum(np.abs(pset.lon - pset_mixing.lon)) > 0.) & (np.sum(np.abs(pset.lat - pset_mixing.lat)) > 0.)
+
+@pytest.mark.parametrize("mode", ["scipy", "jit"])
+def test_TEOSdensity_kernels(mode):
+    """ Adapted test from Parcels v3 codebase.
+    """
+    settings_file = 'tests/test_data/test_settings.json'
+    settings = pp.utils.load_settings(settings_file)
+
+    settings['simulation'] = make_standard_simulation_settings()
+    settings['plastictype'] = make_standard_plastictype_settings()
+
+    # Turn off all other processes
+    settings['use_3D'] = False
+    settings['use_biofouling'] = False
+    settings['use_stokes'] = False
+    settings['use_wind'] = False
+    settings['use_mixing'] = False
+
+    def generate_fieldset(xdim=2, ydim=2, zdim=2, tdim=1):
+        lon = np.linspace(0.0, 10.0, xdim, dtype=np.float32)
+        lat = np.linspace(0.0, 10.0, ydim, dtype=np.float32)
+        depth = np.linspace(0, 2000, zdim, dtype=np.float32)
+        time = np.zeros(tdim, dtype=np.float64)
+        U = np.ones((tdim, zdim, ydim, xdim))
+        V = np.ones((tdim, zdim, ydim, xdim))
+        abs_salinity = 30 * np.ones((tdim, zdim, ydim, xdim))
+        cons_temperature = 10 * np.ones((tdim, zdim, ydim, xdim))
+        dimensions = {"lat": lat, "lon": lon, "depth": depth, "time": time}
+        data = {
+            "U": np.array(U, dtype=np.float32),
+            "V": np.array(V, dtype=np.float32),
+            "absolute_salinity": np.array(abs_salinity, dtype=np.float32),
+            "conservative_temperature": np.array(cons_temperature, dtype=np.float32),
+        }
+        return (data, dimensions)
+
+    data, dimensions = generate_fieldset()
+    fieldset = parcels.FieldSet.from_data(data, dimensions)
+
+    release_locations = {'lons': [5], 'lats': [5],
+                         'plastic_amount': [1]}
+    
+    pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
+
+    pset.execute(pp.kernels.PolyTEOS10_bsq, runtime=1)
+
+    assert np.allclose(pset[0].seawater_density, 1027.45140)
