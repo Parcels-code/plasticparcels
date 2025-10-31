@@ -284,7 +284,7 @@ def test_TEOSdensity_kernels(mode):
 
     release_locations = {'lons': [5], 'lats': [5],
                          'plastic_amount': [1]}
-    
+
     pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
 
     pset.execute(pp.kernels.PolyTEOS10_bsq, runtime=1)
