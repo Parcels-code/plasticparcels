@@ -39,10 +39,6 @@ def StokesDrift(particle, fieldset, time):
     [1] Breivik (2016) - https://doi.org/10.1016/j.ocemod.2016.01.005
 
     """
-    # Sample the U / V components of Stokes drift
-    stokes_U = fieldset.Stokes_U[time, particle.depth, particle.lat, particle.lon]
-    stokes_V = fieldset.Stokes_V[time, particle.depth, particle.lat, particle.lon]
-
     # Sample the peak wave period
     T_p = fieldset.wave_Tp[time, particle.depth, particle.lat, particle.lon]
 
@@ -51,6 +47,10 @@ def StokesDrift(particle, fieldset, time):
 
     # Only compute displacements if the peak wave period is large enough and the particle is in the water
     if T_p > 1E-14 and particle.depth < local_bathymetry:
+        # Sample the U / V components of Stokes drift
+        stokes_U = fieldset.Stokes_U[time, particle.depth, particle.lat, particle.lon]
+        stokes_V = fieldset.Stokes_V[time, particle.depth, particle.lat, particle.lon]
+
         # Peak wave frequency
         omega_p = 2. * math.pi / T_p
 
@@ -102,13 +102,13 @@ def WindageDrift(particle, fieldset, time):
     (ocean_U, ocean_V) = fieldset.UV[particle]
     ocean_speed = math.sqrt(ocean_U**2 + ocean_V**2)
 
-    # Sample the U / V components of wind
-    wind_U = fieldset.Wind_U[time, particle.depth, particle.lat, particle.lon]
-    wind_V = fieldset.Wind_V[time, particle.depth, particle.lat, particle.lon]
-
     # Apply windage to particles that have some exposed surface above the ocean surface
     # Use a basic approach to only apply windage to particle in the ocean
-    if particle.depth < 0.5*particle.plastic_diameter and ocean_speed > 1E-12:
+    if particle.depth < 0.5*particle.plastic_diameter and ocean_speed > 1E-14:
+        # Sample the U / V components of wind
+        wind_U = fieldset.Wind_U[time, particle.depth, particle.lat, particle.lon]
+        wind_V = fieldset.Wind_V[time, particle.depth, particle.lat, particle.lon]
+
         # Compute particle displacement
         particle_dlon += particle.wind_coefficient * (wind_U - ocean_U) * particle.dt  # noqa
         particle_dlat += particle.wind_coefficient * (wind_V - ocean_V) * particle.dt  # noqa
@@ -161,15 +161,15 @@ def SettlingVelocity(particle, fieldset, time):
     g = fieldset.G  # gravitational acceleration [m s-2]
     seawater_density = particle.seawater_density  # [kg m-3]
     temperature = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
-    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000
+    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000.
     particle_diameter = particle.plastic_diameter
     particle_density = particle.plastic_density
 
     # Compute the kinematic viscosity of seawater
     water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
-    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2  # Eq. (28) from [2]
-    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2  # Eq. (29) from [2]
-    seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
+    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2.  # Eq. (28) from [2]
+    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2.  # Eq. (29) from [2]
+    seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2.)  # Eq. (27) from [2]
     seawater_kinematic_viscosity = seawater_dynamic_viscosity / seawater_density  # Eq. (25) from [2]
 
     # Compute the density difference of the particle
@@ -179,7 +179,7 @@ def SettlingVelocity(particle, fieldset, time):
     dimensionless_diameter = (math.fabs(particle_density - seawater_density) * g * particle_diameter ** 3.) / (seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
+    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
         dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
     elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
         dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
@@ -271,9 +271,9 @@ def Biofouling(particle, fieldset, time):
     initial_settling_velocity = particle.settling_velocity  # settling velocity [m s-1]
 
     # Compute the seawater dynamic viscosity and kinematic viscosity
-    water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
-    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2  # Eq. (28) from [2]
-    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2  # Eq. (29) from [2]
+    water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2.) - 91.296))  # Eq. (26) from [2]
+    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2.  # Eq. (28) from [2]
+    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2.  # Eq. (29) from [2]
     seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
     seawater_kinematic_viscosity = seawater_dynamic_viscosity / particle.seawater_density  # Eq. (25) from [2]
 
@@ -282,7 +282,7 @@ def Biofouling(particle, fieldset, time):
     mol_concentration_diatoms = fieldset.bio_diatom[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Diatoms expressed as carbon in sea water
     mol_concentration_nanophytoplankton = fieldset.bio_nanophy[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Nanophytoplankton expressed as carbon in seawater
     total_primary_production_of_phyto = fieldset.pp_phyto[time, particle.depth, particle.lat, particle.lon]  # mg C /m3/day #pp_phyto_
-    median_mg_carbon_per_cell = 2726e-9  # Median mg of Carbon per cell selected from [3]. From [2] pg7966 - "The conversion from carbon to algae cells is highly variable, ranging between 35339 to 47.76 pg per carbon cell [3]. We choose the median value, 2726 x 10^-9 mg per carbon cell."
+    median_mg_carbon_per_cell = 2726.0E-9  # Median mg of Carbon per cell selected from [3]. From [2] pg7966 - "The conversion from carbon to algae cells is highly variable, ranging between 35339 to 47.76 pg per carbon cell [3]. We choose the median value, 2726 x 10^-9 mg per carbon cell."
     # carbon_molecular_weight = fieldset.carbon_molecular_weight # grams C per mol of C #Wt_C
 
     # Compute concentration numbers
@@ -350,7 +350,7 @@ def Biofouling(particle, fieldset, time):
     dimensionless_diameter = (math.fabs(total_density - particle.seawater_density) * fieldset.G * particle_diameter ** 3.) / (particle.seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
+    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
         dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
     elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
         dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
@@ -489,7 +489,7 @@ def VerticalMixing(particle, fieldset, time):
 
     Description
     ----------
-    A simple verticle mixing kernel that uses a markov-0 process to determine the vertical
+    A simple vertical mixing kernel that uses a markov-0 process to determine the vertical
     displacement of a particle [1]. The deterministic component is determined
     using forward-difference with a given `delta_z`.
 
@@ -524,7 +524,6 @@ def VerticalMixing(particle, fieldset, time):
 
     # Compute the random walk component of Eq. (1)
     dz_random = ParcelsRandom.uniform(-1., 1.) * math.sqrt(math.fabs(particle.dt) * 3) * math.sqrt(2 * kz)
-    # TODO - implement the reflective boundary condition
 
     # Compute rise velocity component of Eq. (1) - Already accounted for in other kernels
     dz_wb = 0  # particle.settling_velocity * particle.dt
@@ -535,7 +534,32 @@ def VerticalMixing(particle, fieldset, time):
     # Update particle position
     particle_ddepth += ddepth  # noqa
 
-# Biofouling related kernels
+
+def reflectAtSurface(particle, fieldset, time):
+    """A reflecting boundary condition kernel at the ocean surface.
+
+    Description
+    ----------
+    A simple kernel to reflect particles at the ocean surface if they go through the surface.
+
+    Parameter Requirements
+    ----------
+    None
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all vertical displacement kernels have been applied.
+
+    References
+    ----------
+    None
+
+    """
+    potential_depth = particle.depth + particle_ddepth  # noqa
+    if potential_depth < 0.:# Particle is above the surface
+        particle.depth = -potential_depth
+        particle_ddepth = 0.  # noqa
 
 
 def unbeaching(particle, fieldset, time):
@@ -560,7 +584,7 @@ def unbeaching(particle, fieldset, time):
         unbeaching field using the updated particle position.
     """
     # Measure the velocity field at the final particle location
-    (vel_u, vel_v, vel_w) = fieldset.UVW[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
+    (vel_u, vel_v) = fieldset.UV[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
 
     if math.fabs(vel_u) < 1e-14 and math.fabs(vel_v) < 1e-14:
         U_ub = fieldset.unbeach_U[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
@@ -571,6 +595,104 @@ def unbeaching(particle, fieldset, time):
 
         particle_dlon += dlon  # noqa
         particle_dlat += dlat  # noqa
+
+
+def unbeachingBySamplingAfterwards(particle, fieldset, time):
+    """Alternative unbeaching kernel.
+
+    Description
+    ----------
+    A kernel to 'unbeach' particles that have been advected onto non-ocean grid cells.
+    This kernel samples the velocity field in the four cardinal directions around the particle,
+    and moves the particle in the direction of the highest velocity magnitude, assuming that
+    this direction is the ocean direction. This kernel only acts if the particle displacement
+    in both zonal and meridional directions is (near) zero, indicating that the particle is beached.
+
+    Parameter Requirements
+    ----------
+    Fieldset:
+        None
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all other movement kernels.
+    """
+    # In the case of being beached, these displacement will be zero
+    new_lon = particle.lon + particle_dlon  # noqa
+    new_lat = particle.lat + particle_dlat  # noqa
+    new_depth = particle.depth + particle_ddepth  # noqa
+
+    if math.fabs(particle_dlon) + math.fabs(particle_dlat) < 1e-14:  # noqa
+        displacement = 1./8. # Degree displacement to sample the velocity field
+
+        # Convert 1m/s to degrees/s at the particle latitude in zonal and meridional directions
+        unbeach_U = 1. / (1852. * 60. * math.cos(particle.lat * math.pi / 180.))
+        unbeach_V = 1. / (1852. * 60.)
+
+        # Sample the velocity field in the four cardinal directions
+        (U_left, V_left) = fieldset.UV[time, new_depth, new_lat, new_lon - displacement]
+        (U_right, V_right) = fieldset.UV[time, new_depth, new_lat, new_lon + displacement]
+        (U_up, V_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon]
+        (U_down, V_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon]
+
+        # Find the direction of the highest velocity
+        left = math.sqrt(U_left**2 + V_left**2)
+        right = math.sqrt(U_right**2 + V_right**2)
+        up = math.sqrt(U_up**2 + V_up**2)
+        down = math.sqrt(U_down**2 + V_down**2)
+
+        max_vel = 0.
+        U_dir = 0.
+        V_dir = 0.
+
+        if left + right + up + down > 1e-14:
+            max_vel = left
+            U_dir = -1.
+            V_dir = 0.
+            if max_vel < right:
+                max_vel = right
+                U_dir = 1.
+                V_dir = 0.
+            if max_vel < up:
+                max_vel = up
+                U_dir = 0.
+                V_dir = 1.
+            if max_vel < down:
+                max_vel = down
+                U_dir = 0.
+                V_dir = -1.
+
+        # If all four cardinal directions are zero, check diagonal directions
+        else:
+            (U_left_up, V_left_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon - displacement]
+            (U_left_down, V_left_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon - displacement]
+            (U_right_up, V_right_up) = fieldset.UV[time, new_depth, new_lat + displacement, new_lon + displacement]
+            (U_right_down, V_right_down) = fieldset.UV[time, new_depth, new_lat - displacement, new_lon + displacement]
+
+            left_up = math.sqrt(U_left_up**2 + V_left_up**2)
+            left_down = math.sqrt(U_left_down**2 + V_left_down**2)
+            right_up = math.sqrt(U_right_up**2 + V_right_up**2)
+            right_down = math.sqrt(U_right_down**2 + V_right_down**2)
+
+            max_vel = left_up
+            U_dir = -1.
+            V_dir = 1.
+            if max_vel < left_down:
+                max_vel = left_down
+                U_dir = 1.
+                V_dir = -1.
+            if max_vel < right_up:
+                max_vel = right_up
+                U_dir = 1.
+                V_dir = 1.
+            if max_vel < right_down:
+                max_vel = right_down
+                U_dir = 1.
+                V_dir = -1.
+
+        particle_dlon += U_dir * unbeach_U * particle.dt  # noqa
+        particle_dlat += V_dir * unbeach_V * particle.dt  # noqa
 
 
 def checkThroughBathymetry(particle, fieldset, time):
@@ -606,6 +728,35 @@ def checkThroughBathymetry(particle, fieldset, time):
     elif potential_depth > 3900.:  # If particle >3.9km deep, stick it there
         particle_ddepth = 3900. - particle.depth  # noqa
 
+
+def reflectAtBathymetry(particle, fieldset, time):
+    """Reflect at bathymetry kernel.
+
+    Description
+    ----------
+    A simple kernel to reflect particles at the ocean bathymetry, if they go through the bathymetry.
+
+    Parameter Requirements
+    ----------
+    Fieldset:
+        - `fieldset.bathymetry` - A 2D field containing the ocean bathymetry. Units [m].
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all other movement kernels, as it samples the
+        bathymetry field using the updated particle position.
+    """
+    local_bathymetry = fieldset.bathymetry[time, particle.depth, particle.lat, particle.lon]
+    potential_depth = particle.depth + particle_ddepth  # noqa
+
+    if potential_depth > 100:
+        local_bathymetry = 0.99*local_bathymetry # Handle linear interpolation issues for deep particles
+
+    if potential_depth > local_bathymetry:
+        beyond_depth = potential_depth - local_bathymetry
+        particle.depth = local_bathymetry - beyond_depth # Reflect the particle back above the bathymetry
+        particle_ddepth = 0.  # noqa
 
 
 def periodicBC(particle, fieldset, time):
