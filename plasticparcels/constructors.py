@@ -170,7 +170,7 @@ def create_copernicus_hydrodynamic_fieldset(settings):
 
     # Load in bathymetry
     if 'bathymetry' in ocean_dict['dataset_id'].keys():
-        
+
         data_request = {
                 'dataset_id': settings['bathymetry']['dataset_id']['bathymetry'],
                 'longitude': settings['simulation']['boundingbox'][:2],
@@ -270,7 +270,7 @@ def create_fieldset(settings):
                 ds_bgc.append(ds_dict[key])
             ds_bgc = xr.merge(ds_bgc)
             bio_fieldset = parcels.FieldSet.from_xarray_dataset(ds_bgc,settings['bgc']['variables'], settings['bgc']['dimensions'], mesh='spherical')
-            
+
             # Add the fields to the main fieldset
             for field in bio_fieldset.get_fields():
                 fieldset.add_field(field)
@@ -319,7 +319,7 @@ def create_fieldset(settings):
                 }
                 ds = create_copernicusmarine_dataset(data_request)
                 ds_dict[key] = ds
-    
+
             ds_stokes = []
             for key in settings['stokes']['variables'].keys():
                 ds_stokes.append(ds_dict[key])

@@ -164,6 +164,6 @@ def download_plasticparcels_dataset(dataset: str, settings, data_home=None):
             if not os.path.exists(filepath):
                 url = f"{plasticparcels_data_url}/{dataset}/{filename}"
                 urlretrieve(url, str(filepath))
-        except Exception as e:
+        except Exception:
             warnings.warn(f"Could not set settings path {settings_path} for dataset {dataset!r}.", stacklevel=1)
     return settings
