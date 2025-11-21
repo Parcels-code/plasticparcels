@@ -3,8 +3,8 @@
     "allow_time_extrapolation": false,
     "verbose_delete": false,
     "use_mixing": false,
-    "use_biofouling": false,
-    "use_stokes": false,
+    "use_biofouling": true,
+    "use_stokes": true,
     "use_wind": false,
     "ocean": {
         "type": "copernicus_marine",
