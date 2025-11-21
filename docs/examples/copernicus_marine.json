@@ -7,12 +7,12 @@
     "use_stokes": true,
     "use_wind": false,
     "ocean": {
-        "type": "copernicus_marine",
         "dataset_id": {"U" :"cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
                      "V" :"cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
                      "W" :"cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m",
                      "conservative_temperature": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
-                     "absolute_salinity": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m"},
+                     "absolute_salinity": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m",
+                     "bathymetry": "cmems_mod_glo_phy_anfc_0.083deg_static"},
         "variables": {"U": "uo",
                       "V": "vo",
                       "W": "wo",
@@ -21,7 +21,10 @@
         "dimensions": {"lon": "longitude",
                        "lat": "latitude",
                        "depth": "depth",
-                       "time": "time"}
+                       "time": "time"},
+        "bathymetry_variables": {"bathymetry": "deptho"},
+        "bathymetry_dimensions": {"lon": "longitude",
+                                 "lat": "latitude"}
     },
     "bathymetry": { "type": "copernicus_marine",
         "dataset_id": {"bathymetry": "cmems_mod_glo_phy_anfc_0.083deg_static"},
@@ -30,7 +33,6 @@
                        "lat": "latitude"}
     },
     "bgc": {
-        "type": "copernicus_marine",
         "dataset_id": {"pp_phyto": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
                      "bio_nanophy": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
                      "bio_diatom": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m"},
@@ -57,7 +59,6 @@
         }
     },
     "stokes": {
-        "type": "copernicus_marine",
         "dataset_id": {"Stokes_U": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
                       "Stokes_V": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
                       "wave_Tp": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"},
