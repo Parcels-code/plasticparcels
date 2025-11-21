@@ -182,6 +182,7 @@ def create_copernicus_hydrodynamic_fieldset(settings):
             }
         ds_bathymetry = create_copernicusmarine_dataset(data_request)
         fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['bathymetry']['variables'], settings['bathymetry']['dimensions'], mesh='spherical')
+        fieldset.add_constant('z_start', 0.5)
         fieldset.add_field(fieldset_bathymetry.bathymetry) # type: ignore
 
     return fieldset
@@ -375,6 +376,10 @@ def create_fieldset(settings):
         for field in fieldset_unbeach.get_fields():
             fieldset.add_field(field)
 
+        fieldset.add_constant('use_unbeaching', True)
+    else:
+        fieldset.add_constant('use_unbeaching', False)
+
     fieldset.add_constant('verbose_delete', settings['verbose_delete'])
 
     return fieldset
@@ -544,7 +549,7 @@ def create_kernel(fieldset):
         kernels.append(VerticalMixing)
 
     # Add the unbeaching kernel
-    if fieldset.use_stokes or fieldset.use_wind:
+    if fieldset.use_unbeaching:
         kernels.append(unbeaching)
 
     if fieldset.use_3D: # Add statuscode kernels for 3D advection
