@@ -485,7 +485,14 @@ def create_particleset_from_map(fieldset, settings):
     if 'concentration_type' in settings['release'].keys():
         particle_locations = particle_locations[particle_locations['ConcentrationType'] == settings['release']['concentration_type']]
 
-    particle_locations = particle_locations.groupby(['Longitude', 'Latitude'])[release_quantity_name].agg('sum').reset_index()
+    if 'Longitude' in particle_locations.columns and 'Latitude' in particle_locations.columns:
+        particle_locations = particle_locations.groupby(['Longitude', 'Latitude'])[release_quantity_name].agg('sum').reset_index()
+    elif 'ModelLongitude' in particle_locations.columns and 'ModelLatitude' in particle_locations.columns:
+        particle_locations = particle_locations.groupby(['ModelLongitude', 'ModelLatitude'])[release_quantity_name].agg('sum').reset_index()
+        particle_locations = particle_locations.rename(columns={'ModelLongitude': 'Longitude', 'ModelLatitude': 'Latitude'})
+    else:
+        raise ValueError('Release map must contain Longitude and Latitude columns.')
+
     particle_locations = particle_locations[particle_locations[release_quantity_name] > 0]
 
     release_locations = {'lons': particle_locations['Longitude'],
