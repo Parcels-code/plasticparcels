@@ -26,12 +26,6 @@
         "bathymetry_dimensions": {"lon": "longitude",
                                  "lat": "latitude"}
     },
-    "bathymetry": { "type": "copernicus_marine",
-        "dataset_id": {"bathymetry": "cmems_mod_glo_phy_anfc_0.083deg_static"},
-        "variables": {"bathymetry": "deptho"},
-        "dimensions": {"lon": "longitude",
-                       "lat": "latitude"}
-    },
     "bgc": {
         "dataset_id": {"pp_phyto": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
                      "bio_nanophy": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
