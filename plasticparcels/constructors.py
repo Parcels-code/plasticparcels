@@ -172,16 +172,16 @@ def create_copernicus_hydrodynamic_fieldset(settings):
     if 'bathymetry' in ocean_dict['dataset_id'].keys():
 
         data_request = {
-                'dataset_id': settings['bathymetry']['dataset_id']['bathymetry'],
+                'dataset_id': settings['ocean']['dataset_id']['bathymetry'],
                 'longitude': settings['simulation']['boundingbox'][:2],
                 'latitude': settings['simulation']['boundingbox'][2:],
                 'depth': settings['simulation']['depth_range'],
-                'variables': [settings['bathymetry']['variables']['bathymetry']],
+                'variables': [settings['ocean']['bathymetry_variables']['bathymetry']],
                 'time': [settings['simulation']['startdate'],
                         settings['simulation']['startdate'] + settings['simulation']['runtime']]
             }
         ds_bathymetry = create_copernicusmarine_dataset(data_request)
-        fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['bathymetry']['variables'], settings['bathymetry']['dimensions'], mesh='spherical')
+        fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
         fieldset.add_constant('z_start', 0.5)
         fieldset.add_field(fieldset_bathymetry.bathymetry) # type: ignore
 
