@@ -7,6 +7,7 @@ import shapely as sh
 import json
 from pathlib import Path
 from urllib.request import urlretrieve
+import warnings
 
 
 def getclosest_ij(lats, lons, latpt, lonpt):
@@ -158,9 +159,11 @@ def download_plasticparcels_dataset(dataset: str, settings, data_home=None):
 
     for settings_path, filename in plasticparcels_data_files[dataset]:
         filepath = os.path.join(dataset_folder, filename)
-        settings[settings_path[0]][settings_path[1]] = filepath
-        if not os.path.exists(filepath):
-            url = f"{plasticparcels_data_url}/{dataset}/{filename}"
-            urlretrieve(url, str(filepath))
-
+        try:
+            settings[settings_path[0]][settings_path[1]] = filepath
+            if not os.path.exists(filepath):
+                url = f"{plasticparcels_data_url}/{dataset}/{filename}"
+                urlretrieve(url, str(filepath))
+        except Exception:
+            warnings.warn(f"Could not set settings path {settings_path} for dataset {dataset!r}.", stacklevel=1)
     return settings

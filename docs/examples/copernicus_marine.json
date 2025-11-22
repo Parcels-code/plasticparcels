@@ -1,0 +1,80 @@
+{
+    "use_3D": true,
+    "allow_time_extrapolation": false,
+    "verbose_delete": false,
+    "use_mixing": false,
+    "use_biofouling": true,
+    "use_stokes": true,
+    "use_wind": false,
+    "ocean": {
+        "dataset_id": {"U" :"cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+                     "V" :"cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
+                     "W" :"cmems_mod_glo_phy-wcur_anfc_0.083deg_P1D-m",
+                     "conservative_temperature": "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
+                     "absolute_salinity": "cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m",
+                     "bathymetry": "cmems_mod_glo_phy_anfc_0.083deg_static"},
+        "variables": {"U": "uo",
+                      "V": "vo",
+                      "W": "wo",
+                      "conservative_temperature": "thetao",
+                      "absolute_salinity": "so"},
+        "dimensions": {"lon": "longitude",
+                       "lat": "latitude",
+                       "depth": "depth",
+                       "time": "time"},
+        "bathymetry_variables": {"bathymetry": "deptho"},
+        "bathymetry_dimensions": {"lon": "longitude",
+                                 "lat": "latitude"}
+    },
+    "bgc": {
+        "dataset_id": {"pp_phyto": "cmems_mod_glo_bgc-bio_anfc_0.25deg_P1D-m",
+                     "bio_nanophy": "cmems_mod_glo_bgc-pft_anfc_0.25deg_P1D-m",
+                     "bio_diatom": "cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1D-m"},
+        "variables": {
+            "pp_phyto": "nppv",
+            "bio_nanophy": "phyc",
+            "bio_diatom": "zooc"
+        },
+        "dimensions": {"lon": "longitude",
+                       "lat": "latitude",
+                       "depth": "depth",
+                       "time": "time"},
+        "constants": {
+            "biofilm_density": 1388.0,
+            "algae_cell_volume": 2e-16,
+            "K": 1.3805834190672156e-23,
+            "R20": 1.1574074074074074e-06,
+            "Q10": 2.13,
+            "Gamma": 2.0,
+            "carbon_molecular_weight": 12.0,
+            "collision_probability": 1.0,
+            "algae_mortality_rate": 1.0,
+            "algae_respiration_f": 1.0
+        }
+    },
+    "stokes": {
+        "dataset_id": {"Stokes_U": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
+                      "Stokes_V": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i",
+                      "wave_Tp": "cmems_mod_glo_wav_anfc_0.083deg_PT3H-i"},
+        "variables": {
+            "Stokes_U": "VSDX",
+            "Stokes_V": "VSDY",
+            "wave_Tp": "VTPK"
+        },
+        "dimensions": {"lon": "longitude",
+                       "lat": "latitude",
+                       "time": "time"}
+    },
+    "simulation": {
+        "start_date": null,
+        "runtime": null,
+        "dt_write": null,
+        "dt_timestep": null
+    },
+    "release_maps": {
+        "coastal": "input_data/NEMO0083/coastal_population_MPW_NEMO0083.csv",
+        "rivers": "input_data/NEMO0083/river_emissions_NEMO0083.csv",
+        "fisheries": "input_data/NEMO0083/agg_data_fisheries_info_NEMO0083.csv",
+        "global_concentrations": "input_data/NEMO0083/global_concentrations_NEMO0083.csv"
+    }
+}
