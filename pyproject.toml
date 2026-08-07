@@ -115,6 +115,12 @@ exclude-newer = "7d"
 [tool.pixi.pypi-dependencies]
 plasticparcels = { path = ".", editable = true }
 
+[tool.pixi.dependencies]
+# Pin Python <3.14: numcodecs' bundled c-blosc uses `typedef _Bool bool` which
+# is illegal in C23 (the default standard in newer GCC). This breaks source
+# builds on linux with Python 3.14+. Test removing this pin upgrading to v4 of Parcels (as that uses Zarr v3, and a different numcodecs)
+python = ">=3.12,<3.14"
+
 [tool.pixi.feature.dev.dependencies]
 proj = "*"
 
