@@ -5,10 +5,6 @@ on:
   schedule:
     - cron: "0 7 * * 1" # Run every Monday at 7:00 UTC
 
-defaults:
-  run:
-    shell: bash -el {0}
-
 jobs:
   unit-test:
     name: Unittesting on ubuntu with python latest
@@ -18,15 +14,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Setup Conda and parcels
-        uses: ./.github/actions/install-plasticparcels
-        with:
-          environment-file: environment.yml
-          environment-name: py3_parcels
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.5
       - name: Unit test
-        run: |
-          coverage run -m pytest -v -s tests
-          coverage xml
+        run: pixi run tests with-coverage
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:

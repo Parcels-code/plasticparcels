@@ -9,3 +9,9 @@ docs/_build/*
 .vscode
 _version_setup.py
 
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# coverage
+coverage.xml

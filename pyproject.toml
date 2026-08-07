@@ -28,8 +28,14 @@ dependencies = [
     "parcels >= 3.0.2, < 4",
     "shapely",
     "geopandas",
-    "pytest",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-cov",
+]
+
 
 [project.urls]
 homepage = "https://parcels-code.org/"
@@ -91,3 +97,37 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+plasticparcels = { path = ".", editable = true }
+
+[tool.pixi.feature.dev.dependencies]
+proj = "*"
+
+[tool.pixi.feature.dev.tasks.tests]
+cmd = "pytest {{ '--cov=plasticparcels --cov-report=xml' if coverage=='with-coverage' else '' }}"
+description = "Run the tests"
+args = [{ arg = "coverage", default = 'no-coverage', choices = ["with-coverage", "no-coverage"] }]
+
+
+[tool.pixi.feature.docs.dependencies]
+ipython = "*"
+numpydoc = "*"
+nbsphinx = "*"
+sphinx = "*"
+pandoc = "*"
+pydata-sphinx-theme = "*"
+sphinx-autobuild = "*"
+myst-parser = "*"
+
+[tool.pixi.feature.docs.tasks]
+docs-build = {cmd = "make html", cwd = "docs", description = "Biuld the docs."}
+
+
+[tool.pixi.environments]
+default = ["dev", "docs"]
+
