@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "schedule": ["on monday"],
+  "managers": [
+    {
+      "managerType": "pixi",
+      "fileMatch": ["(^|/)pyproject\\.toml$"],
+      "lockFileMaintenance": true
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["on the first day of the month"],
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["pixi"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "commitMessagePrefix": "chore(pixi):",
+      "labels": ["dependencies", "pixi"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "commitMessagePrefix": "chore(ci):",
+      "labels": ["dependencies", "github-actions"],
+      "pinDigests": false
+    }
+  ]
+}
