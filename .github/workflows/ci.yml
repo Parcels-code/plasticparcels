@@ -5,6 +5,10 @@ on:
     branches:
       - "main"
 
+concurrency:
+  group: branch-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   unit-test:
     name: Unittesting on ubuntu with python latest
