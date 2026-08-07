@@ -1,14 +1,18 @@
 version: 2
 build:
-  os: ubuntu-22.04
+  os: ubuntu-lts-latest
   tools:
-    python: mambaforge-22.9
+    # just so RTD stops complaining
+    python: "latest"
   jobs:
-    pre_build:
-      - pip install . # Need access to version information
-
+    create_environment:
+      - asdf plugin add pixi
+      - asdf install pixi latest
+      - asdf global pixi latest
+    install:
+      - pixi install --frozen
+    build:
+      html:
+        - pixi run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
 sphinx:
   configuration: docs/conf.py
-
-conda:
-  environment: docs/environment_docs.yml

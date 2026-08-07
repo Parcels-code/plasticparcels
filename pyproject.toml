@@ -9,10 +9,9 @@ readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "PlasticParcels developers" }]
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -28,8 +27,24 @@ dependencies = [
     "parcels >= 3.0.2, < 4",
     "shapely",
     "geopandas",
-    "pytest",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-cov",
+    "ipython",
+]
+docs = [
+    "numpydoc",
+    "nbsphinx",
+    "sphinx",
+    "pandoc",
+    "pydata-sphinx-theme",
+    "sphinx-autobuild",
+    "myst-parser",
+]
+
 
 [project.urls]
 homepage = "https://parcels-code.org/"
@@ -91,3 +106,34 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "win-64", "linux-64"]
+exclude-newer = "7d"
+
+[tool.pixi.pypi-dependencies]
+plasticparcels = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+# Pin Python <3.14: numcodecs' bundled c-blosc uses `typedef _Bool bool` which
+# is illegal in C23 (the default standard in newer GCC). This breaks source
+# builds on linux with Python 3.14+. Test removing this pin upgrading to v4 of Parcels (as that uses Zarr v3, and a different numcodecs)
+python = ">=3.12,<3.14"
+
+[tool.pixi.feature.dev.dependencies]
+proj = "*"
+
+[tool.pixi.feature.dev.tasks.tests]
+cmd = "pytest {{ '--cov=plasticparcels --cov-report=xml' if coverage=='with-coverage' else '' }}"
+description = "Run the tests"
+args = [{ arg = "coverage", default = 'no-coverage', choices = ["with-coverage", "no-coverage"] }]
+
+
+[tool.pixi.feature.docs.tasks]
+docs-build = {cmd = "make html", cwd = "docs", description = "Biuld the docs."}
+
+
+[tool.pixi.environments]
+default = ["dev", "docs"]
+
