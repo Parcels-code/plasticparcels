@@ -10,7 +10,7 @@ build:
       - asdf install pixi latest
       - asdf global pixi latest
     install:
-      - pixi install
+      - pixi install --frozen
     build:
       html:
         - pixi run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html

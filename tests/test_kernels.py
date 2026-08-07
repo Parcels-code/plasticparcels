@@ -237,7 +237,6 @@ def test_mixing():
 
     pset = make_standard_particleset(fieldset, settings)
     pset_mixing = make_standard_particleset(fieldset, settings)
-
     pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
     pset_mixing.execute(kernels_mixing, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
