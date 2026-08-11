@@ -197,6 +197,97 @@ def SettlingVelocity(particle, fieldset, time):
     # Update particle depth
     particle_ddepth += particle.settling_velocity * particle.dt  # noqa
 
+def FecalPellets_Egestion(particle, fieldset, time):
+    """
+    Faecal pellets egestion kernel.
+
+    Description
+    ----------
+    Using the approach in [1] the settling velocity of the particle (intended as organic matter + plastic particle)
+    is determined through Eq. (1), where the density of the particle is updated at each iteration based on the quantity
+    of organic matter consumed in time described by Eq. (2) in [1]
+
+
+    Parameter Requirements
+    ----------
+    fieldset :
+        - `fieldset.zooplankton`    TBD
+
+    Calculation steps:
+        1. Compute the seawater dynamic viscosity from Eq. (27) in [2]
+        2. Compute the kinematic viscosity from Eq. (25) in [2]
+        3. Compute the volume of organic matter present in the particle
+        4. Compute the particle density
+        5. Compute the settling velocity of the particle from Eq. (1) in [1]
+        6. Compute the new radius of the particle due to the organic matter consumption from Eq. (2) in [1]
+
+    Parameter Requirements
+    ----------
+    particle :
+        - particle diameter
+        - plastic diameter
+        - plastic density
+        - organic matter density
+        - remineralization type (that determines remineralization constant as described in [1])
+        - seawater_density
+    fieldset :
+        - `fieldset.G` - Gravity constant. Units [m s-2].
+        - `fieldset.conservative_temperature` - The conservative temperature field. Units [C].
+        - `fieldset.absolute_salinity` - The absolute salinity field. Units [g/kg].
+        - `fieldset.zooplankton_concentration` ???      TBD
+
+    Order of Operations:
+        This kernel must run after the PolyTEOS10_bsq kernel, which sets the particle.seawater_density variable, relied on by this.
+
+    References
+    ----------
+    [1] Omand (2020) - https://doi.org/10.1038/s41598-020-60424-5
+    """
+    # seawater_density = particle.seawater_density  # [kg m-3]
+    temperature = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
+    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon]# / 1000. #CHECK THIS
+    plastic_radius = 0.5 * particle.plastic_diameter
+
+    # Compute the seawater dynamic viscosity
+    water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
+    A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2  # Eq. (28) from [2]
+    B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2  # Eq. (29) from [2]
+    seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
+
+    # Compute the zooplankton component TBD
+
+    # Compute the radius, surface area, volume and thickness of the particle including potential organic matter
+    plastic_volume = (4. / 3.) * math.pi * plastic_radius ** 3.  # volume of plastic [m3]
+    #plastic_surface_area = 4. * math.pi * plastic_radius ** 2.  # surface area of plastic particle [m2]
+    particle_radius = particle.particle_diameter / 2.
+    particle_volume = (4. / 3.) * math.pi * particle_radius ** 3.    # volume of total (biofilm + plastic) [m3]
+    organic_volume = particle_volume - plastic_volume  # volume of organic matter [m3]
+    # FP_surface_area = 4. * math.pi * particle_radius ** 2.
+
+    # Compute particle density
+    particle_density = ((particle.plastic_density * plastic_volume) + (particle.organic_density * organic_volume)) / particle_volume
+
+    # Compute the settling velocity of the particle using Eq. (1) from [1]
+    settling_velocity = - (2. * particle_radius ** 2. * fieldset.G * (particle_density - particle.seawater_density)) / (9. * seawater_dynamic_viscosity) # m s-1
+
+    # Update the settling velocity
+    particle.settling_velocity = settling_velocity
+
+    # Update particle depth
+    particle_ddepth += particle.settling_velocity * particle.dt  # noqa
+
+    # Compute the final particle radius using Eq. (2) from [1]
+    if particle_radius >= plastic_radius:
+        new_particle_radius = particle_radius - (particle.remineralization_C * fieldset.remineralization_R * (particle_radius ** (particle.remineralization_type - 2.))) * particle.dt
+
+        if new_particle_radius < plastic_radius:
+            new_particle_radius = plastic_radius
+
+        particle.particle_diameter = 2.* new_particle_radius
+
+
+
+
 
 def Biofouling(particle, fieldset, time):
     r"""Settling velocity due to biofouling kernel.

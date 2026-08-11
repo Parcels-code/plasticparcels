@@ -77,6 +77,18 @@ where {math}`\text{d}W(t)` is a Wiener noise increment with zero mean and a vari
 
 A version of this kernel has been used in [@Onink2022](http://dx.doi.org/10.5194/gmd-15-1995-2022).
 
+### Fecal Pellets Egestion
+Plastic particles are susceptible to be ingested and excreted by small organisms belonging to the zooplankton category.
+After the egestion, they are incorporated into fecal pellets that differ in density from both virgin plastic and pure organic material. The presence of organic matter surrounding the plastic particle leads to a change in its overall density, thereby affecting its buoyancy. A particle that was initially buoyant may become negatively buoyant and sink or settle, depending on the density of the surrounding seawater. The reduction in the volume of organic matter leads to changes in the particle's density and, consequently, in its settling velocity, until the organic matter is completely degraded and the plastic particle returns to its initial state. The modeling of the dynamics of egested fecal pellets (+ plastic particles) has been developed following approach of [@Omand2020](https://doi.org/10.1038/s41598-020-60424-5).
+
+In this framework, the settling velocity of a particle is computed based on the difference between the particle's density and that of the surrounding seawater. We assume that the organic matter enveloping the plastic particle is remineralized, as time passes by, according to the equation describing the variation of its equivalent radius: {math}`a`:
+
+$$
+\frac{\text{d}a}{\text{d}t} := - \text{C} \ \text{r} \ a^{\text{n}-2}.
+$$
+
+Where  $\text{C}$, $\text{r}$ and $\text{n}$ are the remineralization constant, the remineralization rate and a constant related to the type of remineralization.
+
 
 ### Sea-ice capture
 A sea-ice capture kernel is currently under development and will be released soon.
