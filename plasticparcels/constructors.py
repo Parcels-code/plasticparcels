@@ -180,12 +180,15 @@ def create_copernicus_hydrodynamic_fieldset(settings):
         ds_dict[key] = ds
 
     # Create the hydrodynamic fieldset:
-    ds_ocean = []
-    for key in settings['ocean']['variables'].keys():
-        ds_ocean.append(ds_dict[key])
-    ds_ocean = xr.merge(ds_ocean)
+    # ds_ocean = []
+    # for key in settings['ocean']['variables'].keys():
+    #     ds_ocean.append(ds_dict[key])
+    # ds_ocean = xr.merge(ds_ocean)
 
-    fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=ds_dict)
+
+    #fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
     # Create flags for custom particle behaviour
     fieldset.add_context('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
@@ -208,9 +211,10 @@ def create_copernicus_hydrodynamic_fieldset(settings):
                         settings['simulation']['startdate'] + settings['simulation']['runtime']]
             }
         ds_bathymetry = create_copernicusmarine_dataset(data_request)
-        fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
-        fieldset.add_constant('z_start', 0.5)
-        fieldset.add_field(fieldset_bathymetry.bathymetry) # type: ignore
+        #fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
+        fieldset_bathymetry = parcels.FieldSet.from_sgrid_conventions(parcels.utils.copernicusmarine_to_sgrid(ds_bathymetry))
+        fieldset.add_context('z_start', 0.5)
+        fieldset.add_field(fieldset_bathymetry) # type: ignore
 
     return fieldset
 
