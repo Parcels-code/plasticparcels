@@ -36,6 +36,7 @@ def create_hydrodynamic_fieldset(settings):
 
     # Mesh masks
     ocean_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['ocean_mesh'])  # mesh_mask
+    ds_ocean_mesh = xr.open_dataset(ocean_mesh)
 
     # Setup input for fieldset creation
     ufiles = select_files(dirread_model, 'U_%4i*.nc', startdate, runtime, dt_margin=3)
@@ -44,48 +45,74 @@ def create_hydrodynamic_fieldset(settings):
     tfiles = select_files(dirread_model, 'T_%4i*.nc', startdate, runtime, dt_margin=3)
     sfiles = select_files(dirread_model, 'S_%4i*.nc', startdate, runtime, dt_margin=3)
 
-    filenames = {'U': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': ufiles},
-                 'V': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': vfiles},
-                 'W': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': wfiles},
-                 'conservative_temperature': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': tfiles},
-                 'absolute_salinity': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': sfiles}}
+    ds_U = xr.open_mfdataset(ufiles, combine='by_coords')
+    ds_V = xr.open_mfdataset(vfiles, combine='by_coords')
+    ds_W = xr.open_mfdataset(wfiles, combine='by_coords')
+    ds_t = xr.open_mfdataset(tfiles, combine='by_coords')
+    ds_s = xr.open_mfdataset(sfiles, combine='by_coords')
 
-    variables = settings['ocean']['variables']
-    dimensions = settings['ocean']['dimensions']
-    indices = settings['ocean']['indices']
+    ds_fset = parcels.convert.nemo_to_sgrid(
+        fields=dict(U=ds_U[settings['ocean']['variables']['U']],
+                    V=ds_V[settings['ocean']['variables']['V']],
+                    W=ds_W[settings['ocean']['variables']['W']],
+                    conservative_temperature=ds_t[settings['ocean']['variables']['conservative_temperature']],
+                    absolute_salinity=ds_s[settings['ocean']['variables']['absolute_salinity']]),
+        coords=ds_ocean_mesh
+    )
 
-    if not settings['use_3D']:
-        indices['depth'] = range(0, 2)
+    #filenames = {'U': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': ufiles},
+    #             'V': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': vfiles},
+    #             'W': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': wfiles},
+    #             'conservative_temperature': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': tfiles},
+    #             'absolute_salinity': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': sfiles}}
+
+    #variables = settings['ocean']['variables']
+    #dimensions = settings['ocean']['dimensions']
+    #indices = settings['ocean']['indices']
+
+    #TODO: Determine how to apply the indices straight to the xarray dataset
+    #if not settings['use_3D']:
+    #    indices['depth'] = range(0, 2)
 
     # Load the fieldset
-    fieldset = FieldSet.from_nemo(filenames, variables, dimensions,
-                                  indices=indices, allow_time_extrapolation=settings['allow_time_extrapolation'])
+    #fieldset = FieldSet.from_nemo(filenames, variables, dimensions,
+    #                              indices=indices, allow_time_extrapolation=settings['allow_time_extrapolation'])
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing'])
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing'])
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Add in bathymetry
-    fieldset.add_constant('z_start', 0.5)
-    bathymetry_variables = settings['ocean']['bathymetry_variables']
-    bathymetry_dimensions = settings['ocean']['bathymetry_dimensions']
+    fieldset.add_context('z_start', 0.5)
+
     bathymetry_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['bathymetry_mesh'])
-    bathymetry_field = Field.from_netcdf(bathymetry_mesh, bathymetry_variables, bathymetry_dimensions)
+    ds_bathymetry = parcels.FieldSet.xr.open_dataset(bathymetry_mesh)
+    ds_sgrid_bathymetry = parcels.convert.nemo_to_sgrid(fields=dict(ds_bathymetry))
+    bathymetry_field = parcels.FieldSet.from_sgrid_conventions(ds_sgrid_bathymetry)
+    #bathymetry_variables = settings['ocean']['bathymetry_variables']
+    #bathymetry_dimensions = settings['ocean']['bathymetry_dimensions']
+    #bathymetry_field = Field.from_netcdf(bathymetry_mesh, bathymetry_variables, bathymetry_dimensions)
     fieldset.add_field(bathymetry_field)
 
     # If vertical mixing is turned on, add in the KPP-Profile
     if fieldset.use_mixing:
         dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
         kzfiles = select_files(dirread_model, 'KZ_%4i*.nc', startdate, runtime, dt_margin=3)
-        mixing_filenames = {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': kzfiles}
-        mixing_variables = settings['ocean']['vertical_mixing_variables']
-        mixing_dimensions = settings['ocean']['vertical_mixing_dimensions']
-        mixing_fieldset = FieldSet.from_nemo(mixing_filenames, mixing_variables, mixing_dimensions)
-        fieldset.add_field(mixing_fieldset.mixing_kz)  # phytoplankton primary productivity
+        ds_kz = xr.open_mfdataset(kzfiles, combine='by_coords')
+        ds_kz_sgrid = parcels.convert.nemo_to_sgrid(fields=dict(mixing_kz=ds_kz), coords=ds_ocean_mesh)
+        kz_field = parcels.FieldSet.from_sgrid_conventions(ds_kz_sgrid)
+        fieldset.add_field(kz_field)
+        #mixing_filenames = {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': kzfiles}
+        #mixing_variables = settings['ocean']['vertical_mixing_variables']
+        #mixing_dimensions = settings['ocean']['vertical_mixing_dimensions']
+        #mixing_fieldset = FieldSet.from_nemo(mixing_filenames, mixing_variables, mixing_dimensions)
+        #fieldset.add_field(mixing_fieldset.mixing_kz)  # phytoplankton primary productivity
 
     return fieldset
 
@@ -161,12 +188,12 @@ def create_copernicus_hydrodynamic_fieldset(settings):
     fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Load in bathymetry
     if 'bathymetry' in ocean_dict['dataset_id'].keys():
