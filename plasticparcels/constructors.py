@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 import pandas as pd
-from parcels import FieldSet, Field, ParticleSet, JITParticle, Variable, AdvectionRK4, AdvectionRK4_3D
+from parcels import FieldSet, ParticleSet, JITParticle, Variable, AdvectionRK4, AdvectionRK4_3D
 import parcels
 from parcels.tools.converters import Geographic, GeographicPolar
 
