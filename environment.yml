@@ -5,6 +5,7 @@ dependencies:
   - parcels>=3.0.2
   - shapely
   - geopandas
+  - copernicusmarine>= 2.2.2
 
   # Testing
   - pytest
