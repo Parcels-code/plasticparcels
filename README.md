@@ -17,6 +17,12 @@ conda install conda-forge::plasticparcels
 
 `plasticparcels` has been developed for use with data from the Copernicus Marine Service, and requires the following data to run:
 
+**Option A** - Using data streamed from the `copernicusmarine` toolkit.
+
+* `plasticparcels` should work seamlessly with any of the datasets available in the `copernicusmarine` toolkit
+
+**Option B** - Using hydrodynamic, biogeochemical and wind/wave model data from global reanalysis products
+
 * Hydrodynamic model data: [MOI GLO12 (psy4v3r1)](https://www.mercator-ocean.eu/en/solutions-expertise/accessing-digital-data/product-details/?offer=4217979b-2662-329a-907c-602fdc69c3a3&system=d35404e4-40d3-59d6-3608-581c9495d86a)
 * Biogeochemical model data: [MOI BIO4 (biomer4v2r1)](https://www.mercator-ocean.eu/en/solutions-expertise/accessing-digital-data/product-details/?offer=8d0c01f3-81c7-0a59-0d06-602fdf63c5b6&system=dc40b324-7de7-0732-880b-5d9dcf7d344a)
 * Wave data: [ECMWF ERA5 Wave](https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels) (specifically, the variables `mean_wave_period`, `peak_wave_period`, `u_component_stokes_drift`, and `v_component_stokes_drift`.)
