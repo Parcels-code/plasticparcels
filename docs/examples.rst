@@ -9,7 +9,7 @@ Examples
    :caption: Running simulations
    :name: running-simulations
 
-   examples/example_copernicus_marine.ipynb
+   examples/example_copernicusmarine.ipynb
    examples/example_Italy_coast.ipynb
    examples/example_Greece_coast.ipynb
    examples/example_Croatian_fisheries.ipynb
