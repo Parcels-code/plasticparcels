@@ -19,7 +19,7 @@ conda install conda-forge::plasticparcels
 
 **Option A** - Using data streamed from the `copernicusmarine` toolkit.
 
-* `plasticparcels` should work seamlessly with any of the rectilinear datasets available in the `copernicusmarine` toolkit
+* `plasticparcels` should work seamlessly with any of the datasets available in the `copernicusmarine` toolkit
 
 **Option B** - Using hydrodynamic, biogeochemical and wind/wave model data from global reanalysis products
 
