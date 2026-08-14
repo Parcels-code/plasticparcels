@@ -507,7 +507,7 @@ def create_particleset(fieldset, settings, release_locations):
                  parcels.Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True)]
 
     PlasticParticle = parcels.Particle.add_variable(variables)
-    
+
     pset = parcels.ParticleSet.from_list(fieldset,
                                  PlasticParticle,
                                  lon=lons,
