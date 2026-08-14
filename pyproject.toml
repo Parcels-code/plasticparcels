@@ -27,6 +27,7 @@ dependencies = [
     "parcels >= 3.0.2, < 4",
     "shapely",
     "geopandas",
+    "copernicusmarine",
 ]
 
 [dependency-groups]
