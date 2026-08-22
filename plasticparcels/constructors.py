@@ -4,7 +4,6 @@ import numpy as np
 import xarray as xr
 
 import pandas as pd
-from parcels import FieldSet, Field, ParticleSet, JITParticle, Variable, AdvectionRK4, AdvectionRK4_3D
 import parcels
 from parcels.tools.converters import Geographic, GeographicPolar
 
@@ -36,6 +35,7 @@ def create_hydrodynamic_fieldset(settings):
 
     # Mesh masks
     ocean_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['ocean_mesh'])  # mesh_mask
+    ds_ocean_mesh = xr.open_dataset(ocean_mesh)
 
     # Setup input for fieldset creation
     ufiles = select_files(dirread_model, 'U_%4i*.nc', startdate, runtime, dt_margin=3)
@@ -44,48 +44,74 @@ def create_hydrodynamic_fieldset(settings):
     tfiles = select_files(dirread_model, 'T_%4i*.nc', startdate, runtime, dt_margin=3)
     sfiles = select_files(dirread_model, 'S_%4i*.nc', startdate, runtime, dt_margin=3)
 
-    filenames = {'U': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': ufiles},
-                 'V': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': vfiles},
-                 'W': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': wfiles},
-                 'conservative_temperature': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': tfiles},
-                 'absolute_salinity': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': sfiles}}
+    ds_U = xr.open_mfdataset(ufiles, combine='by_coords')
+    ds_V = xr.open_mfdataset(vfiles, combine='by_coords')
+    ds_W = xr.open_mfdataset(wfiles, combine='by_coords')
+    ds_t = xr.open_mfdataset(tfiles, combine='by_coords')
+    ds_s = xr.open_mfdataset(sfiles, combine='by_coords')
 
-    variables = settings['ocean']['variables']
-    dimensions = settings['ocean']['dimensions']
-    indices = settings['ocean']['indices']
+    ds_fset = parcels.convert.nemo_to_sgrid(
+        fields=dict(U=ds_U[settings['ocean']['variables']['U']],
+                    V=ds_V[settings['ocean']['variables']['V']],
+                    W=ds_W[settings['ocean']['variables']['W']],
+                    conservative_temperature=ds_t[settings['ocean']['variables']['conservative_temperature']],
+                    absolute_salinity=ds_s[settings['ocean']['variables']['absolute_salinity']]),
+        coords=ds_ocean_mesh
+    )
 
-    if not settings['use_3D']:
-        indices['depth'] = range(0, 2)
+    #filenames = {'U': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': ufiles},
+    #             'V': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': vfiles},
+    #             'W': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': wfiles},
+    #             'conservative_temperature': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': tfiles},
+    #             'absolute_salinity': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': sfiles}}
+
+    #variables = settings['ocean']['variables']
+    #dimensions = settings['ocean']['dimensions']
+    #indices = settings['ocean']['indices']
+
+    #TODO: Determine how to apply the indices straight to the xarray dataset
+    #if not settings['use_3D']:
+    #    indices['depth'] = range(0, 2)
 
     # Load the fieldset
-    fieldset = FieldSet.from_nemo(filenames, variables, dimensions,
-                                  indices=indices, allow_time_extrapolation=settings['allow_time_extrapolation'])
+    #fieldset = FieldSet.from_nemo(filenames, variables, dimensions,
+    #                              indices=indices, allow_time_extrapolation=settings['allow_time_extrapolation'])
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
+
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing'])
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing'])
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Add in bathymetry
-    fieldset.add_constant('z_start', 0.5)
-    bathymetry_variables = settings['ocean']['bathymetry_variables']
-    bathymetry_dimensions = settings['ocean']['bathymetry_dimensions']
+    fieldset.add_context('z_start', 0.5)
+
     bathymetry_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['bathymetry_mesh'])
-    bathymetry_field = Field.from_netcdf(bathymetry_mesh, bathymetry_variables, bathymetry_dimensions)
-    fieldset.add_field(bathymetry_field)
+    ds_bathymetry = xr.open_dataset(bathymetry_mesh)
+    ds_sgrid_bathymetry = parcels.convert.nemo_to_sgrid(fields=dict(ds_bathymetry))
+    bathymetry_field = parcels.FieldSet.from_sgrid_conventions(ds_sgrid_bathymetry)
+    #bathymetry_variables = settings['ocean']['bathymetry_variables']
+    #bathymetry_dimensions = settings['ocean']['bathymetry_dimensions']
+    #bathymetry_field = Field.from_netcdf(bathymetry_mesh, bathymetry_variables, bathymetry_dimensions)
+    fieldset += bathymetry_field
 
     # If vertical mixing is turned on, add in the KPP-Profile
     if fieldset.use_mixing:
         dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
         kzfiles = select_files(dirread_model, 'KZ_%4i*.nc', startdate, runtime, dt_margin=3)
-        mixing_filenames = {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': kzfiles}
-        mixing_variables = settings['ocean']['vertical_mixing_variables']
-        mixing_dimensions = settings['ocean']['vertical_mixing_dimensions']
-        mixing_fieldset = FieldSet.from_nemo(mixing_filenames, mixing_variables, mixing_dimensions)
-        fieldset.add_field(mixing_fieldset.mixing_kz)  # phytoplankton primary productivity
+        ds_kz = xr.open_mfdataset(kzfiles, combine='by_coords')
+        ds_kz_sgrid = parcels.convert.nemo_to_sgrid(fields=dict(mixing_kz=ds_kz), coords=ds_ocean_mesh)
+        kz_field = parcels.FieldSet.from_sgrid_conventions(ds_kz_sgrid)
+        fieldset += kz_field
+        #mixing_filenames = {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': kzfiles}
+        #mixing_variables = settings['ocean']['vertical_mixing_variables']
+        #mixing_dimensions = settings['ocean']['vertical_mixing_dimensions']
+        #mixing_fieldset = FieldSet.from_nemo(mixing_filenames, mixing_variables, mixing_dimensions)
+        #fieldset.add_field(mixing_fieldset.mixing_kz)  # phytoplankton primary productivity
 
     return fieldset
 
@@ -153,20 +179,23 @@ def create_copernicus_hydrodynamic_fieldset(settings):
         ds_dict[key] = ds
 
     # Create the hydrodynamic fieldset:
-    ds_ocean = []
-    for key in settings['ocean']['variables'].keys():
-        ds_ocean.append(ds_dict[key])
-    ds_ocean = xr.merge(ds_ocean)
+    # ds_ocean = []
+    # for key in settings['ocean']['variables'].keys():
+    #     ds_ocean.append(ds_dict[key])
+    # ds_ocean = xr.merge(ds_ocean)
 
-    fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
+    ds_fset = parcels.convert.copernicusmarine_to_sgrid(fields=ds_dict)
+
+    #fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds_fset)
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Load in bathymetry
     if 'bathymetry' in ocean_dict['dataset_id'].keys():
@@ -181,9 +210,10 @@ def create_copernicus_hydrodynamic_fieldset(settings):
                         settings['simulation']['startdate'] + settings['simulation']['runtime']]
             }
         ds_bathymetry = create_copernicusmarine_dataset(data_request)
-        fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
-        fieldset.add_constant('z_start', 0.5)
-        fieldset.add_field(fieldset_bathymetry.bathymetry) # type: ignore
+        #fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
+        fieldset_bathymetry = parcels.FieldSet.from_sgrid_conventions(parcels.utils.copernicusmarine_to_sgrid(ds_bathymetry))
+        fieldset.add_context('z_start', 0.5)
+        fieldset += fieldset_bathymetry # type: ignore
 
     return fieldset
 
@@ -225,27 +255,42 @@ def create_fieldset(settings):
             # Create a fieldset with local BGC data
             dirread_bgc = os.path.join(settings['bgc']['directory'], settings['bgc']['filename_style'])
             bgc_mesh = os.path.join(settings['bgc']['directory'], settings['bgc']['bgc_mesh'])  # mesh_mask_4th
+            ds_bgc_mesh = xr.open_dataset(bgc_mesh)
 
-            dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
-            wfiles = select_files(dirread_model, 'W_%4i*.nc', startdate, runtime, dt_margin=3)
+            #dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
+            #wfiles = select_files(dirread_model, 'W_%4i*.nc', startdate, runtime, dt_margin=3)
 
             ppfiles = select_files(dirread_bgc, 'nppv_%4i*.nc', startdate, runtime, dt_margin=8)
             phy1files = select_files(dirread_bgc, 'phy_%4i*.nc', startdate, runtime, dt_margin=8)
             phy2files = select_files(dirread_bgc, 'phy2_%4i*.nc', startdate, runtime, dt_margin=8)
 
-            filenames_bio = {'pp_phyto': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': ppfiles}, # phytoplankton primary productivity
-                            'bio_nanophy': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy1files}, # nanopyhtoplankton concentration [mmol C m-3]
-                            'bio_diatom': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy2files}} # diatom concentration [mmol C m-3]
+            ds_pp = xr.open_mfdataset(ppfiles, combine='by_coords')
+            ds_phy1 = xr.open_mfdataset(phy1files, combine='by_coords')
+            ds_phy2 = xr.open_mfdataset(phy2files, combine='by_coords')
 
-            variables_bio = settings['bgc']['variables']
-            dimensions_bio = settings['bgc']['dimensions']
+
+            #filenames_bio = {'pp_phyto': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': ppfiles}, # phytoplankton primary productivity
+            #                'bio_nanophy': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy1files}, # nanopyhtoplankton concentration [mmol C m-3]
+            #                'bio_diatom': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy2files}} # diatom concentration [mmol C m-3]
+
+            #variables_bio = settings['bgc']['variables']
+            #dimensions_bio = settings['bgc']['dimensions']
 
             # Create the BGC fieldset
-            bio_fieldset = FieldSet.from_nemo(filenames_bio, variables_bio, dimensions_bio)
+            ds_bgc = parcels.convert.nemo_to_sgrid(
+                fields=dict(pp_phyto=ds_pp[settings['bgc']['variables']['pp_phyto']],
+                            bio_nanophy=ds_phy1[settings['bgc']['variables']['bio_nanophy']],
+                            bio_diatom=ds_phy2[settings['bgc']['variables']['bio_diatom']]),
+                coords=ds_bgc_mesh)
+
+            bio_fieldset = parcels.FieldSet.from_sgrid_conventions(ds_bgc)
+            #bio_fieldset = FieldSet.from_nemo(filenames_bio, variables_bio, dimensions_bio)
 
             # Add the fields to the main fieldset
-            for field in bio_fieldset.get_fields():
-                fieldset.add_field(field)
+            #for field in bio_fieldset.get_fields():
+            #    fieldset.add_field(field)
+            fieldset += bio_fieldset
+
 
         elif 'dataset_id' in settings['bgc'].keys():
             # Create the bgc fieldset from copernicusmarine
@@ -265,21 +310,25 @@ def create_fieldset(settings):
                 ds_dict[key] = ds
 
             # Create the bgc fieldset:
-            ds_bgc = []
-            for key in settings['bgc']['variables'].keys():
-                ds_bgc.append(ds_dict[key])
-            ds_bgc = xr.merge(ds_bgc)
-            bio_fieldset = parcels.FieldSet.from_xarray_dataset(ds_bgc,settings['bgc']['variables'], settings['bgc']['dimensions'], mesh='spherical')
+            #ds_bgc = []
+            #for key in settings['bgc']['variables'].keys():
+            #    ds_bgc.append(ds_dict[key])
+            #ds_bgc = xr.merge(ds_bgc)
+            ds_bgc_sgrid = parcels.convert.copernicusmarine_to_sgrid(fields=ds_dict)
+
+            #bio_fieldset = parcels.FieldSet.from_xarray_dataset(ds_bgc,settings['bgc']['variables'], settings['bgc']['dimensions'], mesh='spherical')
+            bio_fieldset = parcels.FieldSet.from_sgrid_conventions(ds_bgc_sgrid)
 
             # Add the fields to the main fieldset
-            for field in bio_fieldset.get_fields():
-                fieldset.add_field(field)
+            #for field in bio_fieldset.get_fields():
+            #    fieldset.add_field(field)
+            fieldset += bio_fieldset
         else:
             raise ValueError('No valid biogeochemical model information found in settings file.')
 
         # Add BGC constants to current fieldset
         for key in settings['bgc']['constants']:
-            fieldset.add_constant(key, settings['bgc']['constants'][key])
+            fieldset.add_context(key, settings['bgc']['constants'][key])
 
 
     if fieldset.use_stokes: # type: ignore
@@ -288,21 +337,31 @@ def create_fieldset(settings):
             dirread_Stokes = os.path.join(settings['stokes']['directory'], settings['stokes']['filename_style'])
             wavesfiles = select_files(dirread_Stokes, '%4i*.nc', startdate, runtime, dt_margin=32)
 
-            filenames_Stokes = {'Stokes_U': wavesfiles,
-                                'Stokes_V': wavesfiles,
-                                'wave_Tp': wavesfiles}
+            ds_Stokes = xr.open_mfdataset(wavesfiles, combine='by_coords')
+            ds_Stokes_sgrid = parcels.convert.copernicusmarine_to_sgrid(
+                fields=dict(Stokes_U=ds_Stokes[settings['stokes']['variables']['Stokes_U']],
+                            Stokes_V=ds_Stokes[settings['stokes']['variables']['Stokes_V']],
+                            wave_Tp=ds_Stokes[settings['stokes']['variables']['wave_Tp']])
+            )
+            #filenames_Stokes = {'Stokes_U': wavesfiles,
+            #                    'Stokes_V': wavesfiles,
+            #                    'wave_Tp': wavesfiles}
 
-            variables_Stokes = settings['stokes']['variables']
-            dimensions_Stokes = settings['stokes']['dimensions']
+            #variables_Stokes = settings['stokes']['variables']
+            #dimensions_Stokes = settings['stokes']['dimensions']
 
-            fieldset_Stokes = FieldSet.from_netcdf(filenames_Stokes, variables_Stokes, dimensions_Stokes, mesh='spherical')
+            #fieldset_Stokes = FieldSet.from_netcdf(filenames_Stokes, variables_Stokes, dimensions_Stokes, mesh='spherical')
+            fieldset_Stokes = parcels.FieldSet.from_sgrid_conventions(ds_Stokes_sgrid)
+            #TODO: Is this the correct way to set units in v4?
             fieldset_Stokes.Stokes_U.units = GeographicPolar()
             fieldset_Stokes.Stokes_V.units = Geographic()
             fieldset_Stokes.add_periodic_halo(zonal=True)
 
             # Add the fields to the main fieldset
-            for field in fieldset_Stokes.get_fields():
-                fieldset.add_field(field)
+            #for field in fieldset_Stokes.get_fields():
+            #    fieldset.add_field(field)
+            fieldset += fieldset_Stokes
+
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -320,15 +379,19 @@ def create_fieldset(settings):
                 ds = create_copernicusmarine_dataset(data_request)
                 ds_dict[key] = ds
 
-            ds_stokes = []
-            for key in settings['stokes']['variables'].keys():
-                ds_stokes.append(ds_dict[key])
-            ds_stokes = xr.merge(ds_stokes)
-            fieldset_stokes = parcels.FieldSet.from_xarray_dataset(ds_stokes,settings['stokes']['variables'], settings['stokes']['dimensions'], mesh='spherical')
+            #ds_stokes = []
+            #for key in settings['stokes']['variables'].keys():
+            #    ds_stokes.append(ds_dict[key])
+            #ds_stokes = xr.merge(ds_stokes)
+            ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=ds_dict)
+
+            #fieldset_stokes = parcels.FieldSet.from_xarray_dataset(ds_stokes,settings['stokes']['variables'], settings['stokes']['dimensions'], mesh='spherical')
+            fieldset_stokes = parcels.FieldSet.from_sgrid_conventions(ds_stokes)
             fieldset_stokes.Stokes_U.units = GeographicPolar() # type: ignore
             fieldset_stokes.Stokes_V.units = Geographic() # type: ignore
-            for field in fieldset_stokes.get_fields():
-                fieldset.add_field(field)
+            #for field in fieldset_stokes.get_fields():
+            #    fieldset.add_field(field)
+            fieldset += fieldset_stokes
         else:
             raise ValueError('No valid Stokes drift model information found in settings file.')
 
@@ -339,48 +402,61 @@ def create_fieldset(settings):
             dirread_wind = os.path.join(settings['wind']['directory'], settings['wind']['filename_style'])
             windfiles = select_files(dirread_wind, '%4i*.nc', startdate, runtime, dt_margin=32)
 
-            filenames_wind = {'Wind_U': windfiles,
-                            'Wind_V': windfiles}
+            ds_wind = xr.open_mfdataset(windfiles, combine='by_coords')
+            ds_wind_sgrid = parcels.convert.copernicusmarine_to_sgrid(
+                fields=dict(Wind_U=ds_wind[settings['wind']['variables']['Wind_U']],
+                            Wind_V=ds_wind[settings['wind']['variables']['Wind_V']])
+                )
 
-            variables_wind = settings['wind']['variables']
-            dimensions_wind = settings['wind']['dimensions']
+            # filenames_wind = {'Wind_U': windfiles,
+            #                 'Wind_V': windfiles}
 
-            fieldset_wind = FieldSet.from_netcdf(filenames_wind, variables_wind, dimensions_wind, mesh='spherical')
+            # variables_wind = settings['wind']['variables']
+            # dimensions_wind = settings['wind']['dimensions']
+
+            #fieldset_wind = FieldSet.from_netcdf(filenames_wind, variables_wind, dimensions_wind, mesh='spherical')
+            fieldset_wind = parcels.FieldSet.from_sgrid_conventions(ds_wind_sgrid)
+            # TODO: Check if this is the correct way to set units in v4
             fieldset_wind.Wind_U.units = GeographicPolar()
             fieldset_wind.Wind_V.units = Geographic()
-            fieldset_wind.add_periodic_halo(zonal=True)
+            #fieldset_wind.add_periodic_halo(zonal=True)
 
             # Add the fields to the main fieldset
-            for field in fieldset_wind.get_fields():
-                fieldset.add_field(field)
+            #for field in fieldset_wind.get_fields():
+            #    fieldset.add_field(field)
+            fieldset += fieldset_wind
+
         elif 'dataset_id' in settings['wind'].keys():
             raise NotImplementedError('Copernicus Marine wind data request not yet implemented.')
         else:
             raise ValueError('No valid wind model information found in settings file.')
 
     # Apply unbeaching currents when Stokes/Wind can push particles into land cells
-    if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
-        # If using local hydrodynamic data, you can also provide unbeaching currents
-        unbeachfiles = settings['unbeaching']['filename']
-        filenames_unbeach = {'unbeach_U': unbeachfiles,
-                             'unbeach_V': unbeachfiles}
+    # TODO: Remove unbeaching currents, and leave as a kernel that can be turned on/off in the settings file.
+    # if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
+    #     # If using local hydrodynamic data, you can also provide unbeaching currents
+    #     unbeachfiles = settings['unbeaching']['filename']
+    #     filenames_unbeach = {'unbeach_U': unbeachfiles,
+    #                          'unbeach_V': unbeachfiles}
 
-        variables_unbeach = settings['unbeaching']['variables']
+    #     variables_unbeach = settings['unbeaching']['variables']
 
-        dimensions_unbeach = settings['unbeaching']['dimensions']
+    #     dimensions_unbeach = settings['unbeaching']['dimensions']
 
-        fieldset_unbeach = FieldSet.from_netcdf(filenames_unbeach, variables_unbeach, dimensions_unbeach, mesh='spherical')
-        fieldset_unbeach.unbeach_U.units = GeographicPolar()
-        fieldset_unbeach.unbeach_V.units = Geographic()
+    #     fieldset_unbeach = FieldSet.from_netcdf(filenames_unbeach, variables_unbeach, dimensions_unbeach, mesh='spherical')
+    #     fieldset_unbeach.unbeach_U.units = GeographicPolar()
+    #     fieldset_unbeach.unbeach_V.units = Geographic()
 
-        for field in fieldset_unbeach.get_fields():
-            fieldset.add_field(field)
+    #     #for field in fieldset_unbeach.get_fields():
+    #     #    fieldset.add_field(field)
+    #     fieldset += fieldset_unbeach
 
-        fieldset.add_constant('use_unbeaching', True)
-    else:
-        fieldset.add_constant('use_unbeaching', False)
+    #     fieldset.add_context('use_unbeaching', True)
+    # else:
+    #     fieldset.add_context('use_unbeaching', False)
+    fieldset.add_context('use_unbeaching', False)
 
-    fieldset.add_constant('verbose_delete', settings['verbose_delete'])
+    fieldset.add_context('verbose_delete', settings['verbose_delete'])
 
     return fieldset
 
@@ -421,20 +497,18 @@ def create_particleset(fieldset, settings, release_locations):
     plastic_diameters = np.full(lons.shape, settings['plastictype']['plastic_diameter'])
     wind_coefficients = np.full(lons.shape, settings['plastictype']['wind_coefficient'])
 
-    PlasticParticle = JITParticle
-    variables = [Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('wind_coefficient', dtype=np.float32, initial=0., to_write=False),
-                 Variable('settling_velocity', dtype=np.float64, initial=0., to_write=False),
-                 Variable('seawater_density', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('absolute_salinity', dtype=np.float64, initial=np.nan, to_write=False),
-                 Variable('algae_amount', dtype=np.float64, initial=0., to_write=False),
-                 Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True)]
+    variables = [parcels.Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
+                 parcels.Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
+                 parcels.Variable('wind_coefficient', dtype=np.float32, initial=0., to_write=False),
+                 parcels.Variable('settling_velocity', dtype=np.float64, initial=0., to_write=False),
+                 parcels.Variable('seawater_density', dtype=np.float32, initial=np.nan, to_write=False),
+                 parcels.Variable('absolute_salinity', dtype=np.float64, initial=np.nan, to_write=False),
+                 parcels.Variable('algae_amount', dtype=np.float64, initial=0., to_write=False),
+                 parcels.Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True)]
 
-    for variable in variables:
-        setattr(PlasticParticle, variable.name, variable)
+    PlasticParticle = parcels.Particle.add_variable(variables)
 
-    pset = ParticleSet.from_list(fieldset,
+    pset = parcels.ParticleSet.from_list(fieldset,
                                  PlasticParticle,
                                  lon=lons,
                                  lat=lats,
@@ -528,9 +602,9 @@ def create_kernel(fieldset):
     kernels.append(PolyTEOS10_bsq)  # To set the seawater_density variable
 
     if fieldset.use_3D:
-        kernels.append(AdvectionRK4_3D)
+        kernels.append(parcels.kernels.AdvectionRK4_3D)
     else:
-        kernels.append(AdvectionRK4)
+        kernels.append(parcels.kernels.AdvectionRK4)
 
     if not fieldset.use_biofouling and fieldset.use_3D:
         kernels.append(SettlingVelocity)
