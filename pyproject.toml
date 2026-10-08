@@ -8,14 +8,10 @@ description = "Package for simulating the transport and dispersion of plastics i
 readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "PlasticParcels developers" }]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
@@ -24,7 +20,7 @@ classifiers = [
     "Intended Audience :: Education",
 ]
 dependencies = [
-    "parcels >= 3.0.2, < 4",
+    "parcels >= 4.0.0",
     "shapely",
     "geopandas",
     "copernicusmarine",
@@ -121,6 +117,9 @@ plasticparcels = { path = ".", editable = true }
 # is illegal in C23 (the default standard in newer GCC). This breaks source
 # builds on linux with Python 3.14+. Test removing this pin upgrading to v4 of Parcels (as that uses Zarr v3, and a different numcodecs)
 python = ">=3.12,<3.14"
+ipykernel = ">=7.4.0,<8"
+matplotlib = ">=3.11.2,<4"
+cartopy = ">=0.26.0,<0.27"
 
 [tool.pixi.feature.dev.dependencies]
 proj = "*"
