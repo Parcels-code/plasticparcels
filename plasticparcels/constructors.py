@@ -4,11 +4,11 @@ import numpy as np
 import xarray as xr
 
 import pandas as pd
-from parcels import FieldSet, Field, ParticleSet, JITParticle, Variable, AdvectionRK4, AdvectionRK4_3D
+from parcels import FieldSet, Field, ParticleSet, Particle, Variable
+from parcels.kernels import AdvectionRK4, AdvectionRK4_3D
 import parcels
-from parcels.tools.converters import Geographic, GeographicPolar
 
-from plasticparcels.kernels import PolyTEOS10_bsq, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, deleteParticle, checkThroughBathymetry
+from plasticparcels.kernels import PolyTEOS10_bsq, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry
 from plasticparcels.utils import select_files
 
 
@@ -158,15 +158,20 @@ def create_copernicus_hydrodynamic_fieldset(settings):
         ds_ocean.append(ds_dict[key])
     ds_ocean = xr.merge(ds_ocean)
 
-    fieldset = parcels.FieldSet.from_xarray_dataset(ds_ocean,settings['ocean']['variables'], settings['ocean']['dimensions'], mesh='spherical')
+    fields = {
+        key: ds_ocean[variable]
+        for key, variable in settings['ocean']['variables'].items()
+    }
+    ds = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+    fieldset = parcels.FieldSet.from_sgrid_conventions(ds)
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Load in bathymetry
     if 'bathymetry' in ocean_dict['dataset_id'].keys():
@@ -181,9 +186,9 @@ def create_copernicus_hydrodynamic_fieldset(settings):
                         settings['simulation']['startdate'] + settings['simulation']['runtime']]
             }
         ds_bathymetry = create_copernicusmarine_dataset(data_request)
-        fieldset_bathymetry = parcels.FieldSet.from_xarray_dataset(ds_bathymetry,settings['ocean']['bathymetry_variables'], settings['ocean']['bathymetry_dimensions'], mesh='spherical')
-        fieldset.add_constant('z_start', 0.5)
-        fieldset.add_field(fieldset_bathymetry.bathymetry) # type: ignore
+        ds_bathymetry = parcels.convert.copernicusmarine_to_sgrid(fields={'bathymetry': ds_bathymetry[settings['ocean']['bathymetry_variables']['bathymetry']]})
+        fieldset += parcels.FieldSet.from_sgrid_conventions(ds_bathymetry)
+        fieldset.add_context('z_start', 0.5)
 
     return fieldset
 
@@ -324,11 +329,12 @@ def create_fieldset(settings):
             for key in settings['stokes']['variables'].keys():
                 ds_stokes.append(ds_dict[key])
             ds_stokes = xr.merge(ds_stokes)
-            fieldset_stokes = parcels.FieldSet.from_xarray_dataset(ds_stokes,settings['stokes']['variables'], settings['stokes']['dimensions'], mesh='spherical')
-            fieldset_stokes.Stokes_U.units = GeographicPolar() # type: ignore
-            fieldset_stokes.Stokes_V.units = Geographic() # type: ignore
-            for field in fieldset_stokes.get_fields():
-                fieldset.add_field(field)
+            fields = {
+                key: ds_stokes[variable]
+                for key, variable in settings['stokes']['variables'].items()
+            }
+            ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_stokes)
         else:
             raise ValueError('No valid Stokes drift model information found in settings file.')
 
@@ -376,11 +382,11 @@ def create_fieldset(settings):
         for field in fieldset_unbeach.get_fields():
             fieldset.add_field(field)
 
-        fieldset.add_constant('use_unbeaching', True)
+        fieldset.add_context('use_unbeaching', True)
     else:
-        fieldset.add_constant('use_unbeaching', False)
+        fieldset.add_context('use_unbeaching', False)
 
-    fieldset.add_constant('verbose_delete', settings['verbose_delete'])
+    fieldset.add_context('verbose_delete', settings['verbose_delete'])
 
     return fieldset
 
@@ -421,28 +427,30 @@ def create_particleset(fieldset, settings, release_locations):
     plastic_diameters = np.full(lons.shape, settings['plastictype']['plastic_diameter'])
     wind_coefficients = np.full(lons.shape, settings['plastictype']['wind_coefficient'])
 
-    PlasticParticle = JITParticle
-    variables = [Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('wind_coefficient', dtype=np.float32, initial=0., to_write=False),
-                 Variable('settling_velocity', dtype=np.float64, initial=0., to_write=False),
-                 Variable('seawater_density', dtype=np.float32, initial=np.nan, to_write=False),
-                 Variable('absolute_salinity', dtype=np.float64, initial=np.nan, to_write=False),
-                 Variable('algae_amount', dtype=np.float64, initial=0., to_write=False),
-                 Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True)]
+    PlasticParticle = Particle.add_variable(
+        [
+            Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
+            Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
+            Variable('wind_coefficient', dtype=np.float32, initial=0., to_write=False),
+            Variable('settling_velocity', dtype=np.float64, initial=0., to_write=False),
+            Variable('seawater_density', dtype=np.float32, initial=np.nan, to_write=False),
+            Variable('absolute_salinity', dtype=np.float64, initial=np.nan, to_write=False),
+            Variable('algae_amount', dtype=np.float64, initial=0., to_write=False),
+            Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True),
+        ]
+    )
 
-    for variable in variables:
-        setattr(PlasticParticle, variable.name, variable)
-
-    pset = ParticleSet.from_list(fieldset,
-                                 PlasticParticle,
-                                 lon=lons,
-                                 lat=lats,
-                                 depth=depths,
-                                 plastic_diameter=plastic_diameters,
-                                 plastic_density=plastic_densities,
-                                 wind_coefficient=wind_coefficients,
-                                 plastic_amount=plastic_amounts)
+    pset = ParticleSet(
+        fieldset,
+        PlasticParticle,
+        x=lons,
+        y=lats,
+        z=depths,
+        plastic_diameter=plastic_diameters,
+        plastic_density=plastic_densities,
+        wind_coefficient=wind_coefficients,
+        plastic_amount=plastic_amounts
+    )
 
     return pset
 
@@ -558,6 +566,5 @@ def create_kernel(fieldset):
 
     # Add statuscode kernels
     kernels.append(periodicBC)
-    kernels.append(deleteParticle)
 
     return kernels

@@ -1,13 +1,13 @@
 # A list of kernels used to displace particles
 # Add a sea-ice kernel https://github.com/AnnekeV/thesis_plastic_seaice/blob/master/kernels.py
 
-from parcels import ParcelsRandom, StatusCode
-import math
+from parcels import StatusCode
+import numpy as np
 
 # ERA 5 https://confluence.ecmwf.int/display/CKB/ERA5%3A+data+documentation
 
 
-def StokesDrift(particle, fieldset, time):
+def StokesDrift(particles, fieldset):
     """Stokes drift kernel.
 
     Description
@@ -39,37 +39,43 @@ def StokesDrift(particle, fieldset, time):
     [1] Breivik (2016) - https://doi.org/10.1016/j.ocemod.2016.01.005
 
     """
+    from scipy.special import erfc
+
     # Sample the peak wave period
-    T_p = fieldset.wave_Tp[time, particle.depth, particle.lat, particle.lon]
+    T_p = fieldset.wave_Tp[particles]
 
     # Compute the local bathymetry / water depth with a margin of error
-    local_bathymetry = 0.99*fieldset.bathymetry[time, particle.depth, particle.lat, particle.lon]
+    local_bathymetry = 0.99*fieldset.bathymetry[particles]
 
     # Only compute displacements if the peak wave period is large enough and the particle is in the water
-    if T_p > 1E-14 and particle.depth < local_bathymetry:
+    mask = (T_p > 1E-14) & (particles.z < local_bathymetry)
+    ptcls = particles[mask]
+    if len(ptcls) > 0:
+        T_p = T_p[mask]
+
         # Sample the U / V components of Stokes drift
-        stokes_U = fieldset.Stokes_U[time, particle.depth, particle.lat, particle.lon]
-        stokes_V = fieldset.Stokes_V[time, particle.depth, particle.lat, particle.lon]
+        stokes_U = fieldset.Stokes_U[ptcls]
+        stokes_V = fieldset.Stokes_V[ptcls]
 
         # Peak wave frequency
-        omega_p = 2. * math.pi / T_p
+        omega_p = 2. * np.pi / T_p
 
         # Peak wave number
         k_p = (omega_p ** 2) / fieldset.G
 
         # Repeated inner term of Eq. (19) - note depth is negative in this formulation, but model depths are positive by convention
-        kp_z_2 = 2. * k_p * particle.depth
+        kp_z_2 = 2. * k_p * ptcls.z
 
         # Decay factor in Eq. (19) -- Where beta=1 for the Phillips spectrum
-        decay = math.exp(-kp_z_2) - math.sqrt(math.pi * kp_z_2) * math.erfc(math.sqrt(kp_z_2))
+        decay = np.exp(-kp_z_2) - np.sqrt(np.pi * kp_z_2) * erfc(np.sqrt(kp_z_2))
 
         # Apply Eq. (19) and compute particle displacement
-        particle_dlon += stokes_U * decay * particle.dt  # noqa
-        particle_dlat += stokes_V * decay * particle.dt  # noqa
+        ptcls.dx += stokes_U * decay * ptcls.dt  # noqa
+        ptcls.dy += stokes_V * decay * ptcls.dt  # noqa
 
 
 # Wind related kernels
-def WindageDrift(particle, fieldset, time):
+def WindageDrift(particles, fieldset):
     """Leeway windage kernel.
 
     Description
@@ -87,7 +93,7 @@ def WindageDrift(particle, fieldset, time):
 
     Parameter Requirements
     ----------
-    particle :
+    particles :
         - wind_coefficient - the particle windage coefficient in decimals (usually taken to be between 0.01 and 0.05, depending on particle size).
     fieldset :
         - `fieldset.Wind_U` and `fieldset.Wind_V`, the wind velocity field at 10m height above sea surface. Units [m s-1].
@@ -99,22 +105,24 @@ def WindageDrift(particle, fieldset, time):
 
     """
     # Sample ocean velocities
-    (ocean_U, ocean_V) = fieldset.UV[particle]
-    ocean_speed = math.sqrt(ocean_U**2 + ocean_V**2)
+    (ocean_U, ocean_V) = fieldset.UV[particles]
+    ocean_speed = np.sqrt(ocean_U**2 + ocean_V**2)
 
     # Apply windage to particles that have some exposed surface above the ocean surface
     # Use a basic approach to only apply windage to particle in the ocean
-    if particle.depth < 0.5*particle.plastic_diameter and ocean_speed > 1E-14:
+    mask = (particles.depth < 0.5*particles.plastic_diameter) & (ocean_speed > 1E-14)
+    ptcls = particles[mask]
+    if len(ptcls) > 0:
         # Sample the U / V components of wind
-        wind_U = fieldset.Wind_U[time, particle.depth, particle.lat, particle.lon]
-        wind_V = fieldset.Wind_V[time, particle.depth, particle.lat, particle.lon]
+        wind_U = fieldset.Wind_U[ptcls]
+        wind_V = fieldset.Wind_V[ptcls]
 
         # Compute particle displacement
-        particle_dlon += particle.wind_coefficient * (wind_U - ocean_U) * particle.dt  # noqa
-        particle_dlat += particle.wind_coefficient * (wind_V - ocean_V) * particle.dt  # noqa
+        ptcls.dx += ptcls.wind_coefficient * (wind_U - ocean_U) * ptcls.dt  # noqa
+        ptcls.dy += ptcls.wind_coefficient * (wind_V - ocean_V) * ptcls.dt  # noqa
 
 
-def SettlingVelocity(particle, fieldset, time):
+def SettlingVelocity(particles, fieldset):
     """Settling velocity kernel.
 
     Description
@@ -134,7 +142,7 @@ def SettlingVelocity(particle, fieldset, time):
 
     Parameter Requirements
     ----------
-    particle :
+    particles :
         - diameter
         - density
         - seawater_density
@@ -159,11 +167,11 @@ def SettlingVelocity(particle, fieldset, time):
     """
     # Define constants and sample fieldset variables
     g = fieldset.G  # gravitational acceleration [m s-2]
-    seawater_density = particle.seawater_density  # [kg m-3]
-    temperature = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
-    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000.
-    particle_diameter = particle.plastic_diameter
-    particle_density = particle.plastic_density
+    seawater_density = particles.seawater_density  # [kg m-3]
+    temperature = fieldset.conservative_temperature[particles]
+    seawater_salinity = fieldset.absolute_salinity[particles] / 1000.
+    particle_diameter = particles.plastic_diameter
+    particle_density = particles.plastic_density
 
     # Compute the kinematic viscosity of seawater
     water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2) - 91.296))  # Eq. (26) from [2]
@@ -176,29 +184,34 @@ def SettlingVelocity(particle, fieldset, time):
     normalised_density_difference = (particle_density - seawater_density) / seawater_density  # normalised difference in density between the plastic particle and seawater [-]
 
     # Compute the dimensionless particle diameter D_* using Eq. (4) from [2]
-    dimensionless_diameter = (math.fabs(particle_density - seawater_density) * g * particle_diameter ** 3.) / (seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
+    dimensionless_diameter = (np.fabs(particle_density - seawater_density) * g * particle_diameter ** 3.) / (seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
+
+    # Clip so log10 is safe for the entries that don't use Eq. (9); those results are discarded anyway
+    log_D = np.log10(np.clip(dimensionless_diameter, 0.05, 5.0E9))
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
-        dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
-    elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
-        dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
-    else:
-        dimensionless_velocity = 10. ** (-3.76715 + (1.92944 * math.log10(dimensionless_diameter)) - (0.09815 * math.log10(dimensionless_diameter) ** 2.) - (
-                                         0.00575 * math.log10(dimensionless_diameter) ** 3.) + (0.00056 * math.log10(dimensionless_diameter) ** 4.))  # Using Eq. (9) in [1]
+    dimensionless_velocity = np.select(
+        [dimensionless_diameter > 5.0E9,
+        dimensionless_diameter < 0.05],
+        [265000.,
+        dimensionless_diameter ** 2. / 5832.],           # Eq. (8) in [1]
+        default=10. ** (-3.76715 + 1.92944 * log_D - 0.09815 * log_D ** 2.
+                        - 0.00575 * log_D ** 3. + 0.00056 * log_D ** 4.),  # Eq. (9) in [1]
+    )
 
     # Compute the settling velocity of the particle using Eq. (5) from [1] (solving for the settling velocity)
-    sign_of_density_difference = math.copysign(1., normalised_density_difference)
-    settling_velocity = sign_of_density_difference * (g * seawater_kinematic_viscosity * dimensionless_velocity * math.fabs(normalised_density_difference)) ** (1. / 3.)  # m s-1
+    sign_of_density_difference = np.copysign(1., normalised_density_difference)
+    settling_velocity = sign_of_density_difference * (
+        g * seawater_kinematic_viscosity * dimensionless_velocity * np.abs(normalised_density_difference)) ** (1. / 3.)
 
     # Update the settling velocity
-    particle.settling_velocity = settling_velocity
+    particles.settling_velocity = settling_velocity
 
     # Update particle depth
-    particle_ddepth += particle.settling_velocity * particle.dt  # noqa
+    particles.dz += particles.settling_velocity * particles.dt  # noqa
 
 
-def Biofouling(particle, fieldset, time):
+def Biofouling(particles, fieldset):
     r"""Settling velocity due to biofouling kernel.
 
     Description
@@ -239,7 +252,7 @@ def Biofouling(particle, fieldset, time):
 
     Parameter Requirements
     ----------
-    particle :
+    particles :
         - diameter
         - density
         - seawater_density
@@ -264,112 +277,111 @@ def Biofouling(particle, fieldset, time):
     [4] Bernard and Remond (2012) - https://doi.org/10.1016/j.biortech.2012.07.022
     """
     # seawater_density = particle.seawater_density  # [kg m-3]
-    temperature = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
-    seawater_salinity = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon] / 1000.
-    particle_radius = 0.5 * particle.plastic_diameter
+    temperature = fieldset.conservative_temperature[particles]
+    seawater_salinity = fieldset.absolute_salinity[particles] / 1000.
+    particle_radius = 0.5 * particles.plastic_diameter
     # particle_density = particle.plastic_density
-    initial_settling_velocity = particle.settling_velocity  # settling velocity [m s-1]
+    initial_settling_velocity = particles.settling_velocity  # settling velocity [m s-1]
 
     # Compute the seawater dynamic viscosity and kinematic viscosity
     water_dynamic_viscosity = 4.2844E-5 + (1. / ((0.156 * (temperature + 64.993) ** 2.) - 91.296))  # Eq. (26) from [2]
     A = 1.541 + 1.998E-2 * temperature - 9.52E-5 * temperature ** 2.  # Eq. (28) from [2]
     B = 7.974 - 7.561E-2 * temperature + 4.724E-4 * temperature ** 2.  # Eq. (29) from [2]
     seawater_dynamic_viscosity = water_dynamic_viscosity * (1. + A * seawater_salinity + B * seawater_salinity ** 2)  # Eq. (27) from [2]
-    seawater_kinematic_viscosity = seawater_dynamic_viscosity / particle.seawater_density  # Eq. (25) from [2]
+    seawater_kinematic_viscosity = seawater_dynamic_viscosity / particles.seawater_density  # Eq. (25) from [2]
 
     # Compute the algal growth component
     # Sample fields
-    mol_concentration_diatoms = fieldset.bio_diatom[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Diatoms expressed as carbon in sea water
-    mol_concentration_nanophytoplankton = fieldset.bio_nanophy[time, particle.depth, particle.lat, particle.lon]  # Mole concentration of Nanophytoplankton expressed as carbon in seawater
-    total_primary_production_of_phyto = fieldset.pp_phyto[time, particle.depth, particle.lat, particle.lon]  # mg C /m3/day #pp_phyto_
+    mol_concentration_diatoms = fieldset.bio_diatom[particles]  # Mole concentration of Diatoms expressed as carbon in sea water
+    mol_concentration_nanophytoplankton = fieldset.bio_nanophy[particles]  # Mole concentration of Nanophytoplankton expressed as carbon in seawater
+    total_primary_production_of_phyto = fieldset.pp_phyto[particles]  # mg C /m3/day #pp_phyto_
     median_mg_carbon_per_cell = 2726.0E-9  # Median mg of Carbon per cell selected from [3]. From [2] pg7966 - "The conversion from carbon to algae cells is highly variable, ranging between 35339 to 47.76 pg per carbon cell [3]. We choose the median value, 2726 x 10^-9 mg per carbon cell."
     # carbon_molecular_weight = fieldset.carbon_molecular_weight # grams C per mol of C #Wt_C
 
     # Compute concentration numbers
     number_concentration_diatoms = mol_concentration_diatoms * (fieldset.carbon_molecular_weight / median_mg_carbon_per_cell)  # conversion from [mmol C m-3] to [mg C m-3] to [no. m-3]
-    number_concentration_diatoms = max(number_concentration_diatoms, 0.)  # Ensure non-negative
+    number_concentration_diatoms = np.maximum(number_concentration_diatoms, 0.)  # Ensure non-negative
     number_concentration_nanophytoplankton = mol_concentration_nanophytoplankton * (fieldset.carbon_molecular_weight / median_mg_carbon_per_cell)
-    number_concentration_nanophytoplankton = max(number_concentration_nanophytoplankton, 0.)  # Ensure non-negative
+    number_concentration_nanophytoplankton = np.maximum(number_concentration_nanophytoplankton, 0.)  # Ensure non-negative
     number_concentration_total = number_concentration_diatoms + number_concentration_nanophytoplankton  # conversion from [mmol C m-3] to [mg C m-3] to [no. m-3]
 
     # Compute primary production
     primary_production_per_cell = total_primary_production_of_phyto / number_concentration_total  # primary productivity per cell, in mg C / cell / day
     primary_production_numcell_per_cell = primary_production_per_cell / median_mg_carbon_per_cell  # primary productivity in terms of amount of cells per cell, in cells / cell / day
-    primary_production_numcell_per_cell = max(primary_production_numcell_per_cell, 0.)  # Ensure non-negative
+    primary_production_numcell_per_cell = np.maximum(primary_production_numcell_per_cell, 0.)  # Ensure non-negative
 
     # Compute growth rates
     max_growth_rate = 1.85  # Maximum growth rate (per day), defined in Table S1 of [2], based on the nominal value estimated in Table 4 of [4]
-    mu_a = min(primary_production_numcell_per_cell, max_growth_rate)/86400.  # Set growth rate per second
+    mu_a = np.minimum(primary_production_numcell_per_cell, max_growth_rate)/86400.  # Set growth rate per second
 
     # Compute the algal growth of the algae already on the particle
-    algae_growth = mu_a * particle.algae_amount  # productivity in amount of cells/m2/s
+    algae_growth = mu_a * particles.algae_amount  # productivity in amount of cells/m2/s
 
     # Compute the radius, surface area, volume and thickness of the particle including potential biofilm
-    particle_volume = (4. / 3.) * math.pi * particle_radius ** 3.  # volume of plastic [m3]
-    particle_surface_area = 4. * math.pi * particle_radius ** 2.  # surface area of plastic particle [m2]
-    algal_cell_radius = ((3. / 4.) * (fieldset.algae_cell_volume / math.pi)) ** (1. / 3.)  # radius of an algal cell [m]
-    biofilm_volume = fieldset.algae_cell_volume * particle.algae_amount * particle_surface_area  # volume of living biofilm [m3]
+    particle_volume = (4. / 3.) * np.pi * particle_radius ** 3.  # volume of plastic [m3]
+    particle_surface_area = 4. * np.pi * particle_radius ** 2.  # surface area of plastic particle [m2]
+    algal_cell_radius = ((3. / 4.) * (fieldset.algae_cell_volume / np.pi)) ** (1. / 3.)  # radius of an algal cell [m]
+    biofilm_volume = fieldset.algae_cell_volume * particles.algae_amount * particle_surface_area  # volume of living biofilm [m3]
 
     total_volume = biofilm_volume + particle_volume  # volume of total (biofilm + plastic) [m3]
-    total_radius = ((total_volume * (3. / (4. * math.pi))) ** (1. / 3.))  # total radius [m]
+    total_radius = ((total_volume * (3. / (4. * np.pi))) ** (1. / 3.))  # total radius [m]
 
     # Compute diffusivities
-    total_density = (particle_volume * particle.plastic_density + biofilm_volume * fieldset.biofilm_density) / total_volume  # total density [kg m-3]
-    plastic_diffusivity = fieldset.K * (temperature + 273.16) / (6. * math.pi * seawater_dynamic_viscosity * total_radius)  # diffusivity of plastic particle [m2 s-1]
-    algae_diffusivity = fieldset.K * (temperature + 273.16) / (6. * math.pi * seawater_dynamic_viscosity * algal_cell_radius)  # diffusivity of algal cells [m2 s-1]
+    total_density = (particle_volume * particles.plastic_density + biofilm_volume * fieldset.biofilm_density) / total_volume  # total density [kg m-3]
+    plastic_diffusivity = fieldset.K * (temperature + 273.16) / (6. * np.pi * seawater_dynamic_viscosity * total_radius)  # diffusivity of plastic particle [m2 s-1]
+    algae_diffusivity = fieldset.K * (temperature + 273.16) / (6. * np.pi * seawater_dynamic_viscosity * algal_cell_radius)  # diffusivity of algal cells [m2 s-1]
 
     # Compute the encounter rates
-    beta_abrown = 4. * math.pi * (plastic_diffusivity + algae_diffusivity) * (total_radius + algal_cell_radius)  # Brownian motion [m3 s-1]
+    beta_abrown = 4. * np.pi * (plastic_diffusivity + algae_diffusivity) * (total_radius + algal_cell_radius)  # Brownian motion [m3 s-1]
     beta_ashear = 1.3 * fieldset.Gamma * ((total_radius + algal_cell_radius) ** 3.)  # advective shear [m3 s-1]
-    beta_aset = (1. / 2.) * math.pi * total_radius ** 2. * math.fabs(initial_settling_velocity)  # differential settling [m3 s-1]
+    beta_aset = (1. / 2.) * np.pi * total_radius ** 2. * np.abs(initial_settling_velocity)  # differential settling [m3 s-1]
     beta_a = beta_abrown + beta_ashear + beta_aset  # collision rate [m3 s-1]
 
     # Compute the algal growth via collision
     a_collision = fieldset.collision_probability * (beta_a * number_concentration_diatoms) / particle_surface_area  # [no. m-2 s-1] collisions with diatoms (Eq. 11 in [2])
 
     # Compute the algal decay due to respiration
-    a_respiration = fieldset.algae_respiration_f * (fieldset.Q10 ** ((temperature - 20.) / 10.)) * fieldset.R20 * particle.algae_amount  # [no. m-2 s-1] respiration
+    a_respiration = fieldset.algae_respiration_f * (fieldset.Q10 ** ((temperature - 20.) / 10.)) * fieldset.R20 * particles.algae_amount  # [no. m-2 s-1] respiration
 
     # Compute the algal decay due to grazing
-    a_grazing = fieldset.algae_mortality_rate * particle.algae_amount
+    a_grazing = fieldset.algae_mortality_rate * particles.algae_amount
 
     # Compute the final algal amount
-    algae_amount_change = (a_collision + algae_growth - a_grazing - a_respiration) * particle.dt
-    if particle.algae_amount + algae_amount_change < 0.:
-        particle.algae_amount = 0.
-    else:
-        particle.algae_amount += algae_amount_change
+    algae_amount_change = (a_collision + algae_growth - a_grazing - a_respiration) * particles.dt
+    particles.algae_amount = np.maximum(particles.algae_amount + algae_amount_change, 0.)
 
     # Compute the new settling velocity
     particle_diameter = 2. * (total_radius)  # equivalent spherical diameter [m], calculated from Dietrich (1982) from A = pi/4 * dn**2
 
     # Compute the density difference of the particle
-    normalised_density_difference = (total_density - particle.seawater_density) / particle.seawater_density  # normalised difference in density between the plastic particle and seawater [-]
+    normalised_density_difference = (total_density - particles.seawater_density) / particles.seawater_density  # normalised difference in density between the plastic particle and seawater [-]
 
     # Compute the dimensionless particle diameter D_* using Eq. (4) from [2]
-    dimensionless_diameter = (math.fabs(total_density - particle.seawater_density) * fieldset.G * particle_diameter ** 3.) / (particle.seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
+    dimensionless_diameter = (np.abs(total_density - particles.seawater_density) * fieldset.G * particle_diameter ** 3.) / (particles.seawater_density * seawater_kinematic_viscosity ** 2.)  # [-]
 
     # Compute the dimensionless settling velocity w_*
-    if dimensionless_diameter > 5.0E9:  # "The boundary layer around the sphere becomes fully turbulent, causing a reduction in drag and an increase in settling velocity" - [1]
-        dimensionless_velocity = 265000.  # Set a maximum dimensionless settling velocity
-    elif dimensionless_diameter < 0.05:  # "At values of D_* less than 0.05, (9) deviates signficantly ... from Stokes' law and (8) should be used." - [1]
-        dimensionless_velocity = (dimensionless_diameter ** 2.) / 5832.  # Using Eq. (8) in [1]
-    else:
-        dimensionless_velocity = 10. ** (-3.76715 + (1.92944 * math.log10(dimensionless_diameter)) - (0.09815 * math.log10(dimensionless_diameter) ** 2.) - (
-                                         0.00575 * math.log10(dimensionless_diameter) ** 3.) + (0.00056 * math.log10(dimensionless_diameter) ** 4.))  # Using Eq. (9) in [1]
+    log_D = np.log10(np.clip(dimensionless_diameter, 0.05, 5.0E9))  # clipped so log10 is safe where Eq. (9) isn't used
+    dimensionless_velocity = np.select(
+        [dimensionless_diameter > 5.0E9,   # fully turbulent boundary layer: maximum dimensionless settling velocity [1]
+        dimensionless_diameter < 0.05],   # Stokes regime, Eq. (8) in [1]
+        [265000.,
+        dimensionless_diameter ** 2. / 5832.],
+        default=10. ** (-3.76715 + 1.92944 * log_D - 0.09815 * log_D ** 2.
+                        - 0.00575 * log_D ** 3. + 0.00056 * log_D ** 4.),  # Eq. (9) in [1]
+)
 
     # Compute the settling velocity of the particle using Eq. (5) from [1] (solving for the settling velocity)
-    sign_of_density_difference = math.copysign(1., normalised_density_difference)
-    settling_velocity = sign_of_density_difference * (fieldset.G * seawater_kinematic_viscosity * dimensionless_velocity * math.fabs(normalised_density_difference)) ** (1. / 3.)  # m s-1
+    sign_of_density_difference = np.copysign(1., normalised_density_difference)
+    settling_velocity = sign_of_density_difference * (fieldset.G * seawater_kinematic_viscosity * dimensionless_velocity * np.abs(normalised_density_difference)) ** (1. / 3.)  # m s-1
 
     # Update the settling velocity
-    particle.settling_velocity = settling_velocity
+    particles.settling_velocity = settling_velocity
 
     # Update particle depth
-    particle_ddepth += particle.settling_velocity * particle.dt  # noqa
+    particle.dz += particle.settling_velocity * particles.dt  # noqa
 
 
-def PolyTEOS10_bsq(particle, fieldset, time):
+def PolyTEOS10_bsq(particles, fieldset):
     """A seawater density kernel.
 
     Description:
@@ -402,9 +414,9 @@ def PolyTEOS10_bsq(particle, fieldset, time):
       Oceanic Technology, 20, 730-741.
 
     """
-    Z = - math.fabs(particle.depth)  # note: use negative depths!
-    SA = fieldset.absolute_salinity[time, particle.depth, particle.lat, particle.lon]
-    CT = fieldset.conservative_temperature[time, particle.depth, particle.lat, particle.lon]
+    Z = - np.abs(particles.z)  # note: use negative depths!
+    SA = fieldset.absolute_salinity[particles]
+    CT = fieldset.conservative_temperature[particles]
 
     SAu = 40. * 35.16504 / 35.
     CTu = 40.
@@ -472,7 +484,7 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     R003 = -2.3342758797e-02
     R103 = -1.8507636718e-02
     R013 = 3.7969820455e-01
-    ss = math.sqrt((SA + deltaS) / SAu)
+    ss = np.sqrt((SA + deltaS) / SAu)
     tt = CT / CTu
     zz = -Z / Zu
     rz3 = R013 * tt + R103 * ss + R003
@@ -481,7 +493,7 @@ def PolyTEOS10_bsq(particle, fieldset, time):
     rz0 = (((((R060 * tt + R150 * ss + R050) * tt + (R240 * ss + R140) * ss + R040) * tt + ((R330 * ss + R230) * ss + R130) * ss + R030) * tt + (((R420 * ss + R320) * ss + R220) * ss + R120) * ss + R020) * tt + ((((R510 * ss + R410) * ss + R310) * ss + R210) * ss + R110) * ss + R010) * tt + (((((R600 * ss + R500) * ss + R400) * ss + R300) * ss + R200) * ss + R100) * ss + R000
     r = ((rz3 * zz + rz2) * zz + rz1) * zz + rz0
 
-    particle.seawater_density = r0 + r
+    particles.seawater_density = r0 + r
 
 
 def VerticalMixing(particle, fieldset, time):
@@ -759,7 +771,7 @@ def reflectAtBathymetry(particle, fieldset, time):
         particle_ddepth = 0.  # noqa
 
 
-def periodicBC(particle, fieldset, time):
+def periodicBC(particles, fieldset):
     """A periodic boundary condition kernel.
 
     Description
@@ -772,10 +784,7 @@ def periodicBC(particle, fieldset, time):
         This kernel should be performed after all other movement kernels, as it sets the updated particle
         longitude to be within the [-180,180] longitudinal range.
     """
-    if particle.lon + particle_dlon <= -180.:  # noqa
-        particle_dlon += 360.  # noqa
-    elif particle.lon + particle_dlon > 180.:  # noqa
-        particle_dlon -= 360.  # noqa
+    particles.dx = ((particles.x + particles.dx + 180) % 360) - 180 - particles.x
 
 
 def checkErrorThroughSurface(particle, fieldset, time):
@@ -794,22 +803,6 @@ def checkErrorThroughSurface(particle, fieldset, time):
         particle_ddepth = 0. # Set the summed displacement to 0.
         particle_ddepth += fieldset.z_start - particle.depth # Set ddepth so that final depth is the ocean surface
         particle.state = StatusCode.Success
-
-
-def deleteParticle(particle, fieldset, time):
-    """General error kernel.
-
-    Description
-    ----------
-    Kernel to delete a particle if it throws an error other than `ErrorThroughSurface`.
-
-    Kernel Requirements
-    ----------
-    Order of Operations:
-        This kernel should be performed after all other movement kernels, as it is an error kernel.
-    """
-    if particle.state >= 50 and particle.state != StatusCode.ErrorThroughSurface:
-        particle.delete()
 
 
 def delete_particle_interp(particle, fieldset, time):

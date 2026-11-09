@@ -20,7 +20,7 @@ classifiers = [
     "Intended Audience :: Education",
 ]
 dependencies = [
-    "parcels >= 4.0.0",
+    "parcels >= 4.0.2",
     "shapely",
     "geopandas",
     "copernicusmarine",
@@ -131,7 +131,7 @@ args = [{ arg = "coverage", default = 'no-coverage', choices = ["with-coverage",
 
 
 [tool.pixi.feature.docs.tasks]
-docs-build = {cmd = "make html", cwd = "docs", description = "Biuld the docs."}
+docs-build = {cmd = "make html", cwd = "docs", description = "Build the docs."}
 
 
 [tool.pixi.environments]
