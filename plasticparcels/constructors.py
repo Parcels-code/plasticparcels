@@ -44,38 +44,40 @@ def create_hydrodynamic_fieldset(settings):
     tfiles = select_files(dirread_model, 'T_%4i*.nc', startdate, runtime, dt_margin=3)
     sfiles = select_files(dirread_model, 'S_%4i*.nc', startdate, runtime, dt_margin=3)
 
-    filenames = {'U': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': ufiles},
-                 'V': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': vfiles},
-                 'W': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': wfiles},
-                 'conservative_temperature': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': tfiles},
-                 'absolute_salinity': {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': sfiles}}
-
-    variables = settings['ocean']['variables']
-    dimensions = settings['ocean']['dimensions']
-    indices = settings['ocean']['indices']
-
     if not settings['use_3D']:
         indices['depth'] = range(0, 2)
 
     # Load the fieldset
-    fieldset = FieldSet.from_nemo(filenames, variables, dimensions,
-                                  indices=indices, allow_time_extrapolation=settings['allow_time_extrapolation'])
+    fields = {"U": xr.open_mfdataset(ufiles)[settings['ocean']['variables']['U']],
+              "V": xr.open_mfdataset(vfiles)[settings['ocean']['variables']['V']],
+              "W": xr.open_mfdataset(wfiles)[settings['ocean']['variables']['W']],
+              "conservative_temperature": xr.open_mfdataset(tfiles)[settings['ocean']['variables']['conservative_temperature']],
+              "absolute_salinity": xr.open_mfdataset(sfiles)[settings['ocean']['variables']['absolute_salinity']]}
+    ds_coords = xr.open_dataset(ocean_mesh)
+    ds = parcels.convert.nemo_to_sgrid(fields=fields, coords=ds_coords)
+    fieldset = FieldSet.from_sgrid_conventions(ds)
 
     # Create flags for custom particle behaviour
-    fieldset.add_constant('use_mixing', settings['use_mixing'])
-    fieldset.add_constant('use_biofouling', settings['use_biofouling'])
-    fieldset.add_constant('use_stokes', settings['use_stokes'])
-    fieldset.add_constant('use_wind', settings['use_wind'])
-    fieldset.add_constant('G', 9.81)  # Gravitational constant [m s-1]
-    fieldset.add_constant('use_3D', settings['use_3D'])
+    fieldset.add_context('use_mixing', settings['use_mixing'])
+    fieldset.add_context('use_biofouling', settings['use_biofouling'])
+    fieldset.add_context('use_stokes', settings['use_stokes'])
+    fieldset.add_context('use_wind', settings['use_wind'])
+    fieldset.add_context('G', 9.81)  # Gravitational constant [m s-1]
+    fieldset.add_context('use_3D', settings['use_3D'])
 
     # Add in bathymetry
-    fieldset.add_constant('z_start', 0.5)
-    bathymetry_variables = settings['ocean']['bathymetry_variables']
-    bathymetry_dimensions = settings['ocean']['bathymetry_dimensions']
+    fieldset.add_context('z_start', 0.5)
+
     bathymetry_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['bathymetry_mesh'])
-    bathymetry_field = Field.from_netcdf(bathymetry_mesh, bathymetry_variables, bathymetry_dimensions)
-    fieldset.add_field(bathymetry_field)
+    ds_bathy = xr.open_dataset(bathymetry_mesh)[settings['ocean']['bathymetry_variables']['bathymetry']]
+
+    # TODO can be removed after https://github.com/Parcels-code/Parcels/pull/3051 is released
+    ds_bathy = ds_bathy.expand_dims({"time": [0]}, axis=0)
+    ds_bathy = ds_bathy.expand_dims({"depth": [0]}, axis=1)
+    ds_bathy = ds_bathy.isel(t=0)
+
+    ds_bathy = parcels.convert.nemo_to_sgrid(fields={'bathymetry': ds_bathy}, coords=ds_coords)
+    fieldset += FieldSet.from_sgrid_conventions(ds_bathy)
 
     # If vertical mixing is turned on, add in the KPP-Profile
     if fieldset.use_mixing:

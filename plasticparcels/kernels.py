@@ -42,7 +42,7 @@ def StokesDrift(particles, fieldset):
     from scipy.special import erfc
 
     # Sample the peak wave period
-    T_p = fieldset.wave_Tp[particles]
+    T_p = fieldset.wave_Tp[particles.t, np.zeros_like(particles.z), particles.y, particles.x]
 
     # Compute the local bathymetry / water depth with a margin of error
     local_bathymetry = 0.99*fieldset.bathymetry[particles]
@@ -54,8 +54,8 @@ def StokesDrift(particles, fieldset):
         T_p = T_p[mask]
 
         # Sample the U / V components of Stokes drift
-        stokes_U = fieldset.Stokes_U[ptcls]
-        stokes_V = fieldset.Stokes_V[ptcls]
+        stokes_U = fieldset.Stokes_U[ptcls.t, np.zeros_like(ptcls.z), ptcls.y, ptcls.x]
+        stokes_V = fieldset.Stokes_V[ptcls.t, np.zeros_like(ptcls.z), ptcls.y, ptcls.x]
 
         # Peak wave frequency
         omega_p = 2. * np.pi / T_p
@@ -707,7 +707,7 @@ def unbeachingBySamplingAfterwards(particle, fieldset, time):
         particle_dlat += V_dir * unbeach_V * particle.dt  # noqa
 
 
-def checkThroughBathymetry(particle, fieldset, time):
+def checkThroughBathymetry(particles, fieldset):
     """Bathymetry error kernel.
 
     Description
@@ -726,19 +726,25 @@ def checkThroughBathymetry(particle, fieldset, time):
         This kernel should be performed after all other movement kernels, as it samples the
         bathymetry field using the updated particle position.
     """
-    bathymetry_local = fieldset.bathymetry[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
-    potential_depth = particle.depth + particle_ddepth  # noqa
+    bathymetry_local = fieldset.bathymetry[particles.t, particles.z + particles.dz, particles.y + particles.dy, particles.x + particles.dx]  # noqa
+    potential_depth = particles.z + particles.dz  # noqa
     min_depth = 0.5  # meters - maybe set this as a fieldset variable?
 
-    if potential_depth < min_depth:
-        particle_ddepth = fieldset.z_start - particle.depth  # noqa # Stick particle to surface
-    elif potential_depth > bathymetry_local:
-        particle_ddepth = bathymetry_local - particle.depth  # noqa # Stick particle at bottom of ocean
-    elif particle.depth > 100. and potential_depth > (bathymetry_local*0.99):  # for deeper particles; since bathymetry can be quite rough (and is interpolated linearly) look at the 99% value instead
-        particle_ddepth = bathymetry_local*0.99 - particle.depth  # noqa # Stick particle at the 99% point
-
-    elif potential_depth > 3900.:  # If particle >3.9km deep, stick it there
-        particle_ddepth = 3900. - particle.depth  # noqa
+    particles.dz = np.select(
+        [
+            potential_depth < min_depth,
+            potential_depth > bathymetry_local,
+            (particles.z > 100.) & (potential_depth > bathymetry_local * 0.99),  # for deeper particles; since bathymetry can be quite rough (and is interpolated linearly) look at the 99% value instead
+            potential_depth > 3900.,  # If particle >3.9km deep, stick it there
+        ],
+        [
+            fieldset.z_start - particles.z,  # noqa # Stick particle to surface
+            bathymetry_local - particles.z,  # noqa # Stick particle at bottom of ocean
+            bathymetry_local * 0.99 - particles.z,  # noqa # Stick particle at the 99% point
+            3900. - particles.z,
+        ],
+        default=particles.dz,
+    )
 
 
 def reflectAtBathymetry(particle, fieldset, time):
@@ -787,7 +793,7 @@ def periodicBC(particles, fieldset):
     particles.dx = ((particles.x + particles.dx + 180) % 360) - 180 - particles.x
 
 
-def checkErrorThroughSurface(particle, fieldset, time):
+def checkErrorThroughSurface(particles, fieldset):
     """Surface error kernel.
 
     Description
@@ -799,10 +805,10 @@ def checkErrorThroughSurface(particle, fieldset, time):
     Order of Operations:
         This kernel should be performed after all other movement kernels, as it is an error kernel.
     """
-    if particle.state == StatusCode.ErrorThroughSurface:
-        particle_ddepth = 0. # Set the summed displacement to 0.
-        particle_ddepth += fieldset.z_start - particle.depth # Set ddepth so that final depth is the ocean surface
-        particle.state = StatusCode.Success
+    ptcls = particles[particles.state == StatusCode.ErrorThroughSurface]
+    ptcls.dz = 0. # Set the summed displacement to 0.
+    ptcls.dz += fieldset.z_start - ptcls.z # Set dz so that final z is the ocean surface
+    ptcls.state = StatusCode.Success
 
 
 def delete_particle_interp(particle, fieldset, time):
