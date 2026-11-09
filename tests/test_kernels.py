@@ -1,4 +1,3 @@
-import parcels.application_kernels
 import plasticparcels as pp
 import parcels
 import numpy as np
@@ -32,13 +31,14 @@ def make_standard_particleset(fieldset, settings):
 
     return pset
 
-def checkBelowDataDepth(particle, fieldset, time):
+def checkBelowDataDepth(particles, fieldset):
     # The vertical mixing kernel can push particles below the test dataset depth, throwing an
     # out of bounds error. This kernel will keep particles above the max depth.
-    if particle.depth + particle_ddepth >= fieldset.max_depth: # noqa
+    ptcls = particles[particles.z + particles.dz >= fieldset.max_depth]
+    if len(ptcls) > 0:
         # move a meter above the max depth
-        particle_ddepth = fieldset.max_depth -  particle.depth - 1.0 # noqa
-        particle.state = parcels.StatusCode.Success
+        ptcls.dz = fieldset.max_depth - ptcls.z - 1.0 # noqa
+        ptcls.state = parcels.StatusCode.Success
 
 
 @pytest.mark.parametrize('use_3D', [True, False])
@@ -60,20 +60,20 @@ def test_advection_only(use_3D):
 
     fieldset = pp.constructors.create_fieldset(settings)
     if use_3D:
-        kernels = [parcels.application_kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
-                   pp.kernels.checkErrorThroughSurface, pp.kernels.deleteParticle]
+        kernels = [parcels.kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
+                   pp.kernels.checkErrorThroughSurface,]
     else:
-        kernels = [parcels.application_kernels.AdvectionRK4, pp.kernels.deleteParticle]
+        kernels = [parcels.kernels.AdvectionRK4]
 
     pset = make_standard_particleset(fieldset, settings)
 
-    start_lons = pset.lon.copy()
-    start_lats = pset.lat.copy()
+    start_lons = pset.x.copy()
+    start_lats = pset.y.copy()
 
-    pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
+    pset.execute(kernels, runtime=np.timedelta64(1, "D"), dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.lon - start_lons)) > 0.) & (np.sum(np.abs(pset.lat - start_lats)) > 0.)
+    assert (np.sum(np.abs(pset.x - start_lons)) > 0.) & (np.sum(np.abs(pset.y - start_lats)) > 0.)
 
 
 def test_settling_velocity():
