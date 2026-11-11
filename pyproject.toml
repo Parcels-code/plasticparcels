@@ -8,12 +8,13 @@ description = "Package for simulating the transport and dispersion of plastics i
 readme = "README.md"
 dynamic = ["version"]
 authors = [{ name = "PlasticParcels developers" }]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
     "Topic :: Education",
@@ -23,7 +24,7 @@ dependencies = [
     "parcels >= 4.0.2",
     "shapely",
     "geopandas",
-    "copernicusmarine",
+    "copernicusmarine > 2.1",
 ]
 
 [dependency-groups]
@@ -113,13 +114,14 @@ exclude-newer = "7d"
 plasticparcels = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
-# Pin Python <3.14: numcodecs' bundled c-blosc uses `typedef _Bool bool` which
-# is illegal in C23 (the default standard in newer GCC). This breaks source
-# builds on linux with Python 3.14+. Test removing this pin upgrading to v4 of Parcels (as that uses Zarr v3, and a different numcodecs)
-python = ">=3.12,<3.14"
-ipykernel = ">=7.4.0,<8"
-matplotlib = ">=3.11.2,<4"
-cartopy = ">=0.26.0,<0.27"
+python = ">=3.12,<3.15"
+ipykernel = "*"
+matplotlib = "*"
+cartopy = "*"
+# botocore (via copernicusmarine) requires python-dateutil<3
+python-dateutil = "<3"
+netcdf4 = "*"
+h5py = "*"
 
 [tool.pixi.feature.dev.dependencies]
 proj = "*"
