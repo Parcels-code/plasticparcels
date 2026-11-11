@@ -110,7 +110,7 @@ def WindageDrift(particles, fieldset):
 
     # Apply windage to particles that have some exposed surface above the ocean surface
     # Use a basic approach to only apply windage to particle in the ocean
-    mask = (particles.depth < 0.5*particles.plastic_diameter) & (ocean_speed > 1E-14)
+    mask = (particles.z < 0.5*particles.plastic_diameter) & (ocean_speed > 1E-14)
     ptcls = particles[mask]
     if len(ptcls) > 0:
         # Sample the U / V components of wind
@@ -118,8 +118,8 @@ def WindageDrift(particles, fieldset):
         wind_V = fieldset.Wind_V[ptcls]
 
         # Compute particle displacement
-        ptcls.dx += ptcls.wind_coefficient * (wind_U - ocean_U) * ptcls.dt  # noqa
-        ptcls.dy += ptcls.wind_coefficient * (wind_V - ocean_V) * ptcls.dt  # noqa
+        ptcls.dx += ptcls.wind_coefficient * (wind_U - ocean_U[mask]) * ptcls.dt  # noqa
+        ptcls.dy += ptcls.wind_coefficient * (wind_V - ocean_V[mask]) * ptcls.dt  # noqa
 
 
 def SettlingVelocity(particles, fieldset):
@@ -496,7 +496,7 @@ def PolyTEOS10_bsq(particles, fieldset):
     particles.seawater_density = r0 + r
 
 
-def VerticalMixing(particle, fieldset, time):
+def VerticalMixing(particles, fieldset):
     """A markov-0 kernel for vertical mixing.
 
     Description
@@ -507,7 +507,7 @@ def VerticalMixing(particle, fieldset, time):
 
     Parameter Requirements
     ----------
-    particle:
+    particles:
         - settling_velocity
     fieldset:
         - `fieldset.mixing_kz` - The vertical eddy diffusivity field. Units [m2 s-1].
@@ -525,26 +525,26 @@ def VerticalMixing(particle, fieldset, time):
     """
     # Sample the ocean vertical eddy diffusivity field KZ
     delta_z = 0.5  # [m], used to compute the gradient of kz using a forward-difference
-    kz = fieldset.mixing_kz[time, particle.depth, particle.lat, particle.lon]
-    kz_delta = fieldset.mixing_kz[time, particle.depth+delta_z, particle.lat, particle.lon]
+    kz = fieldset.mixing_kz[particles]
+    kz_delta = fieldset.mixing_kz[particles.t, particles.z+delta_z, particles.y, particles.x]
 
     # Compute the gradient of kz using a forward-difference
     dkz_dz = (kz_delta - kz) / delta_z
 
     # Compute the deterministic component of Eq. (1)
-    dz_deterministic = dkz_dz * particle.dt
+    dz_deterministic = dkz_dz * particles.dt
 
     # Compute the random walk component of Eq. (1)
-    dz_random = ParcelsRandom.uniform(-1., 1.) * math.sqrt(math.fabs(particle.dt) * 3) * math.sqrt(2 * kz)
+    dz_random = np.random.uniform(-1., 1.) * np.sqrt(np.abs(particles.dt) * 3) * np.sqrt(2 * kz)
 
     # Compute rise velocity component of Eq. (1) - Already accounted for in other kernels
-    dz_wb = 0  # particle.settling_velocity * particle.dt
+    dz_wb = 0  # particles.settling_velocity * particle.dt
 
     # Apply Eq. (1) - computing only the difference in depth
     ddepth = dz_deterministic + dz_random + dz_wb
 
     # Update particle position
-    particle_ddepth += ddepth  # noqa
+    particles.dz += ddepth  # noqa
 
 
 def reflectAtSurface(particle, fieldset, time):
@@ -574,7 +574,7 @@ def reflectAtSurface(particle, fieldset, time):
         particle_ddepth = 0.  # noqa
 
 
-def unbeaching(particle, fieldset, time):
+def unbeaching(particles, fieldset):
     """Unbeaching kernel.
 
     Description
@@ -596,17 +596,17 @@ def unbeaching(particle, fieldset, time):
         unbeaching field using the updated particle position.
     """
     # Measure the velocity field at the final particle location
-    (vel_u, vel_v) = fieldset.UV[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
+    (vel_u, vel_v) = fieldset.UV[particles.t, particles.z + particles.dz, particles.y + particles.dy, particles.x + particles.dx]  # noqa
 
-    if math.fabs(vel_u) < 1e-14 and math.fabs(vel_v) < 1e-14:
-        U_ub = fieldset.unbeach_U[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
-        V_ub = fieldset.unbeach_V[time, particle.depth + particle_ddepth, particle.lat + particle_dlat, particle.lon + particle_dlon]  # noqa
+    ptcls = particles[(np.abs(vel_u) < 1e-14) & (np.abs(vel_v) < 1e-14)]
+    U_ub = fieldset.unbeach_U[ptcls.t, ptcls.z + ptcls.dz, ptcls.y + ptcls.dy, ptcls.x + ptcls.dx]  # noqa
+    V_ub = fieldset.unbeach_V[ptcls.t, ptcls.z + ptcls.dz, ptcls.y + ptcls.dy, ptcls.x + ptcls.dx]  # noqa
 
-        dlon = U_ub * particle.dt
-        dlat = V_ub * particle.dt
+    dlon = U_ub * ptcls.dt
+    dlat = V_ub * ptcls.dt
 
-        particle_dlon += dlon  # noqa
-        particle_dlat += dlat  # noqa
+    ptcls.dx += dlon  # noqa
+    ptcls.dy += dlat  # noqa
 
 
 def unbeachingBySamplingAfterwards(particle, fieldset, time):

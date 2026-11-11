@@ -44,9 +44,6 @@ def create_hydrodynamic_fieldset(settings):
     tfiles = select_files(dirread_model, 'T_%4i*.nc', startdate, runtime, dt_margin=3)
     sfiles = select_files(dirread_model, 'S_%4i*.nc', startdate, runtime, dt_margin=3)
 
-    if not settings['use_3D']:
-        indices['depth'] = range(0, 2)
-
     # Load the fieldset
     fields = {"U": xr.open_mfdataset(ufiles)[settings['ocean']['variables']['U']],
               "V": xr.open_mfdataset(vfiles)[settings['ocean']['variables']['V']],
@@ -55,6 +52,10 @@ def create_hydrodynamic_fieldset(settings):
               "absolute_salinity": xr.open_mfdataset(sfiles)[settings['ocean']['variables']['absolute_salinity']]}
     ds_coords = xr.open_dataset(ocean_mesh)
     ds = parcels.convert.nemo_to_sgrid(fields=fields, coords=ds_coords)
+
+    if not settings['use_3D']:
+        ds = ds.isel(depth=0, depth_center=0)
+
     fieldset = FieldSet.from_sgrid_conventions(ds)
 
     # Create flags for custom particle behaviour
@@ -83,11 +84,9 @@ def create_hydrodynamic_fieldset(settings):
     if fieldset.use_mixing:
         dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
         kzfiles = select_files(dirread_model, 'KZ_%4i*.nc', startdate, runtime, dt_margin=3)
-        mixing_filenames = {'lon': ocean_mesh, 'lat': ocean_mesh, 'depth': wfiles[0], 'data': kzfiles}
-        mixing_variables = settings['ocean']['vertical_mixing_variables']
-        mixing_dimensions = settings['ocean']['vertical_mixing_dimensions']
-        mixing_fieldset = FieldSet.from_nemo(mixing_filenames, mixing_variables, mixing_dimensions)
-        fieldset.add_field(mixing_fieldset.mixing_kz)  # phytoplankton primary productivity
+        ds_mixing = xr.open_mfdataset(kzfiles)[settings['ocean']['vertical_mixing_variables']['mixing_kz']]
+        ds_mixing = parcels.convert.nemo_to_sgrid(fields={'mixing_kz': ds_mixing}, coords=ds_coords)
+        fieldset += FieldSet.from_sgrid_conventions(ds_mixing)
 
     return fieldset
 
@@ -235,24 +234,24 @@ def create_fieldset(settings):
 
             dirread_model = os.path.join(settings['ocean']['directory'], settings['ocean']['filename_style'])
             wfiles = select_files(dirread_model, 'W_%4i*.nc', startdate, runtime, dt_margin=3)
+            ds_w = xr.open_mfdataset(wfiles)
 
             ppfiles = select_files(dirread_bgc, 'nppv_%4i*.nc', startdate, runtime, dt_margin=8)
             phy1files = select_files(dirread_bgc, 'phy_%4i*.nc', startdate, runtime, dt_margin=8)
             phy2files = select_files(dirread_bgc, 'phy2_%4i*.nc', startdate, runtime, dt_margin=8)
 
-            filenames_bio = {'pp_phyto': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': ppfiles}, # phytoplankton primary productivity
-                            'bio_nanophy': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy1files}, # nanopyhtoplankton concentration [mmol C m-3]
-                            'bio_diatom': {'lon': bgc_mesh, 'lat': bgc_mesh, 'depth': wfiles[0], 'data': phy2files}} # diatom concentration [mmol C m-3]
+            bgc_mesh = os.path.join(settings['ocean']['directory'], settings['bgc']['bgc_mesh'])  # mesh_mask
+            ds_mesh = xr.open_dataset(bgc_mesh)
+            ds_mesh["depth"] = ds_w.depthw
 
-            variables_bio = settings['bgc']['variables']
-            dimensions_bio = settings['bgc']['dimensions']
+            ds_bio = xr.open_mfdataset(ppfiles + phy1files + phy2files)
+            fields = {
+                key: ds_bio[variable]
+                for key, variable in settings['bgc']['variables'].items()
+            }
 
-            # Create the BGC fieldset
-            bio_fieldset = FieldSet.from_nemo(filenames_bio, variables_bio, dimensions_bio)
-
-            # Add the fields to the main fieldset
-            for field in bio_fieldset.get_fields():
-                fieldset.add_field(field)
+            ds_bio = parcels.convert.nemo_to_sgrid(fields=fields, coords=ds_mesh)
+            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_bio)
 
         elif 'dataset_id' in settings['bgc'].keys():
             # Create the bgc fieldset from copernicusmarine
@@ -286,7 +285,7 @@ def create_fieldset(settings):
 
         # Add BGC constants to current fieldset
         for key in settings['bgc']['constants']:
-            fieldset.add_constant(key, settings['bgc']['constants'][key])
+            fieldset.add_context(key, settings['bgc']['constants'][key])
 
 
     if fieldset.use_stokes: # type: ignore
@@ -294,22 +293,16 @@ def create_fieldset(settings):
             # Create the stokes fieldset from local data
             dirread_Stokes = os.path.join(settings['stokes']['directory'], settings['stokes']['filename_style'])
             wavesfiles = select_files(dirread_Stokes, '%4i*.nc', startdate, runtime, dt_margin=32)
+            ds_waves = xr.open_mfdataset(wavesfiles)
+            ds_waves = ds_waves.rename({"longitude": "lon", "latitude": "lat"})
+            ds_waves = ds_waves.isel(lat=slice(None, None, -1))
+            fields = {
+                key: ds_waves[variable]
+                for key, variable in settings['stokes']['variables'].items()
+            }
+            ds_waves = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            fieldset += FieldSet.from_sgrid_conventions(ds_waves)
 
-            filenames_Stokes = {'Stokes_U': wavesfiles,
-                                'Stokes_V': wavesfiles,
-                                'wave_Tp': wavesfiles}
-
-            variables_Stokes = settings['stokes']['variables']
-            dimensions_Stokes = settings['stokes']['dimensions']
-
-            fieldset_Stokes = FieldSet.from_netcdf(filenames_Stokes, variables_Stokes, dimensions_Stokes, mesh='spherical')
-            fieldset_Stokes.Stokes_U.units = GeographicPolar()
-            fieldset_Stokes.Stokes_V.units = Geographic()
-            fieldset_Stokes.add_periodic_halo(zonal=True)
-
-            # Add the fields to the main fieldset
-            for field in fieldset_Stokes.get_fields():
-                fieldset.add_field(field)
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -346,21 +339,16 @@ def create_fieldset(settings):
         elif 'directory' in settings['wind'].keys():
             dirread_wind = os.path.join(settings['wind']['directory'], settings['wind']['filename_style'])
             windfiles = select_files(dirread_wind, '%4i*.nc', startdate, runtime, dt_margin=32)
-
-            filenames_wind = {'Wind_U': windfiles,
-                            'Wind_V': windfiles}
-
-            variables_wind = settings['wind']['variables']
-            dimensions_wind = settings['wind']['dimensions']
-
-            fieldset_wind = FieldSet.from_netcdf(filenames_wind, variables_wind, dimensions_wind, mesh='spherical')
-            fieldset_wind.Wind_U.units = GeographicPolar()
-            fieldset_wind.Wind_V.units = Geographic()
-            fieldset_wind.add_periodic_halo(zonal=True)
-
-            # Add the fields to the main fieldset
-            for field in fieldset_wind.get_fields():
-                fieldset.add_field(field)
+            ds_wind = xr.open_mfdataset(windfiles)
+            ds_wind = ds_wind.rename({'longitude': 'lon', 'latitude': 'lat'})
+            ds_wind = ds_wind.isel(lat=slice(None, None, -1))
+            ds_wind = parcels.convert.copernicusmarine_to_sgrid(
+                fields={
+                    'Wind_U': ds_wind[settings['wind']['variables']['Wind_U']],
+                    'Wind_V': ds_wind[settings['wind']['variables']['Wind_V']]
+                }
+            )
+            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind)
         elif 'dataset_id' in settings['wind'].keys():
             raise NotImplementedError('Copernicus Marine wind data request not yet implemented.')
         else:
@@ -370,19 +358,19 @@ def create_fieldset(settings):
     if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
         # If using local hydrodynamic data, you can also provide unbeaching currents
         unbeachfiles = settings['unbeaching']['filename']
-        filenames_unbeach = {'unbeach_U': unbeachfiles,
-                             'unbeach_V': unbeachfiles}
-
-        variables_unbeach = settings['unbeaching']['variables']
-
-        dimensions_unbeach = settings['unbeaching']['dimensions']
-
-        fieldset_unbeach = FieldSet.from_netcdf(filenames_unbeach, variables_unbeach, dimensions_unbeach, mesh='spherical')
-        fieldset_unbeach.unbeach_U.units = GeographicPolar()
-        fieldset_unbeach.unbeach_V.units = Geographic()
-
-        for field in fieldset_unbeach.get_fields():
-            fieldset.add_field(field)
+        ds_unbeach = xr.open_mfdataset(unbeachfiles)
+        ds_unbeach = ds_unbeach.transpose("y", "x")
+        ds_unbeach = ds_unbeach.rename({"lon": "glamf", "lat": "gphif"})
+        ds_unbeach = ds_unbeach.expand_dims(time=[0])
+        ds_unbeach = ds_unbeach.fillna(0)
+        ds_unbeach = parcels.convert.nemo_to_sgrid(
+            fields={
+                'unbeach_U': ds_unbeach[settings['unbeaching']['variables']['unbeach_U']],
+                'unbeach_V': ds_unbeach[settings['unbeaching']['variables']['unbeach_V']]
+            },
+            coords=ds_unbeach,
+        )
+        fieldset += parcels.FieldSet.from_sgrid_conventions(ds_unbeach)
 
         fieldset.add_context('use_unbeaching', True)
     else:
@@ -390,6 +378,7 @@ def create_fieldset(settings):
 
     fieldset.add_context('verbose_delete', settings['verbose_delete'])
 
+    fieldset.to_chunk_cached_arrays()
     return fieldset
 
 
