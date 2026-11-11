@@ -5,10 +5,14 @@ import pytest
 
 
 def make_simple_fieldset():
-    fieldset = parcels.FieldSet.from_data({'U': 0, 'V': 0},
-                                          {'lon': 0, 'lat': 0},
-                                          mesh='spherical')
-    return fieldset
+    from parcels._datasets.structured.generated import simple_UV_dataset
+    ds = simple_UV_dataset()
+
+    # TODO can be removed after Parcels v4.0.3 is released
+    ds.lon.attrs["units"] = "degrees_east"
+    ds.lat.attrs["units"] = "degrees_north"
+
+    return parcels.FieldSet.from_sgrid_conventions(ds)
 
 
 def make_standard_simulation_settings():
