@@ -358,7 +358,7 @@ def create_fieldset(settings):
     if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
         # If using local hydrodynamic data, you can also provide unbeaching currents
         unbeachfiles = settings['unbeaching']['filename']
-        ds_unbeach = xr.open_mfdataset(unbeachfiles)
+        ds_unbeach = xr.open_mfdataset(unbeachfiles, engine='h5netcdf')
         ds_unbeach = ds_unbeach.transpose("y", "x")
         ds_unbeach = ds_unbeach.rename({"lon": "glamf", "lat": "gphif"})
         ds_unbeach = ds_unbeach.expand_dims(time=[0])
