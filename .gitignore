@@ -3,6 +3,7 @@ input_data/
 **.DS_store**
 **.pyc**
 **.zarr
+**.parquet
 *.egg-info
 build
 docs/_build/*
