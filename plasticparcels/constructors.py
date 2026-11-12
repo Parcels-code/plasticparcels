@@ -4,11 +4,12 @@ import numpy as np
 import xarray as xr
 
 import pandas as pd
-from parcels import FieldSet, Field, ParticleSet, Particle, Variable
+from parcels import FieldSet, ParticleSet, Variable
+from parcels._core.particle import get_default_particle
 from parcels.kernels import AdvectionRK4, AdvectionRK4_3D
 import parcels
 
-from plasticparcels.kernels import PolyTEOS10_bsq, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry
+from plasticparcels.kernels import PolyTEOS10_bsq, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry, deleteParticle
 from plasticparcels.utils import select_files
 
 
@@ -292,17 +293,10 @@ def create_fieldset(settings):
         if 'directory' in settings['stokes'].keys():
             # Create the stokes fieldset from local data
             dirread_Stokes = os.path.join(settings['stokes']['directory'], settings['stokes']['filename_style'])
-            wavesfiles = select_files(dirread_Stokes, '%4i*.nc', startdate, runtime, dt_margin=32)
-            ds_waves = xr.open_mfdataset(wavesfiles)
-            ds_waves = ds_waves.rename({"longitude": "lon", "latitude": "lat"})
-            ds_waves = ds_waves.isel(lat=slice(None, None, -1))
-            fields = {
-                key: ds_waves[variable]
-                for key, variable in settings['stokes']['variables'].items()
-            }
-            ds_waves = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-            fieldset += FieldSet.from_sgrid_conventions(ds_waves)
-
+            stokesfiles = select_files(dirread_Stokes, '%4i*.nc', startdate, runtime, dt_margin=32)
+            ds_stokes = xr.open_mfdataset(stokesfiles)
+            ds_stokes = ds_stokes.rename({"longitude": "lon", "latitude": "lat"})
+            ds_stokes = ds_stokes.isel(lat=slice(None, None, -1))
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -324,14 +318,15 @@ def create_fieldset(settings):
             for key in settings['stokes']['variables'].keys():
                 ds_stokes.append(ds_dict[key])
             ds_stokes = xr.merge(ds_stokes)
-            fields = {
-                key: ds_stokes[variable]
-                for key, variable in settings['stokes']['variables'].items()
-            }
-            ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
-            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_stokes)
         else:
             raise ValueError('No valid Stokes drift model information found in settings file.')
+        fields = {
+            key: ds_stokes[variable]
+            for key, variable in settings['stokes']['variables'].items()
+        }
+        ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+        vector_fields = {"Stokes_UV": ('Stokes_U', 'Stokes_V')}
+        fieldset += FieldSet.from_sgrid_conventions(ds_stokes, vector_fields=vector_fields)
 
     if fieldset.use_wind: # type: ignore
         if 'wind' not in settings.keys():
@@ -348,7 +343,8 @@ def create_fieldset(settings):
                     'Wind_V': ds_wind[settings['wind']['variables']['Wind_V']]
                 }
             )
-            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind)
+            vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
+            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
         elif 'dataset_id' in settings['wind'].keys():
             raise NotImplementedError('Copernicus Marine wind data request not yet implemented.')
         else:
@@ -370,7 +366,8 @@ def create_fieldset(settings):
             },
             coords=ds_unbeach,
         )
-        fieldset += parcels.FieldSet.from_sgrid_conventions(ds_unbeach)
+        vector_fields = {"unbeach_UV": ('unbeach_U', 'unbeach_V')}
+        fieldset += parcels.FieldSet.from_sgrid_conventions(ds_unbeach, vector_fields=vector_fields)
 
         fieldset.add_context('use_unbeaching', True)
     else:
@@ -418,7 +415,7 @@ def create_particleset(fieldset, settings, release_locations):
     plastic_diameters = np.full(lons.shape, settings['plastictype']['plastic_diameter'])
     wind_coefficients = np.full(lons.shape, settings['plastictype']['wind_coefficient'])
 
-    PlasticParticle = Particle.add_variable(
+    PlasticParticle = get_default_particle(np.float64).add_variable(
         [
             Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
             Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
@@ -557,5 +554,6 @@ def create_kernel(fieldset):
 
     # Add statuscode kernels
     kernels.append(periodicBC)
+    kernels.append(deleteParticle)
 
     return kernels

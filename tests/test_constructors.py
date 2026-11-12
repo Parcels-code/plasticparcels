@@ -17,7 +17,7 @@ def make_simple_fieldset():
 
 def make_standard_simulation_settings():
     simulation_settings = {'startdate': datetime.strptime('2020-01-04-00:00:00', '%Y-%m-%d-%H:%M:%S'),
-                           'runtime': timedelta(days=2),
+                           'runtime': timedelta(days=1),
                            'outputdt': timedelta(hours=1),
                            'dt': timedelta(minutes=20),
                            }

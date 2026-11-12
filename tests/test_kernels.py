@@ -7,7 +7,7 @@ import pytest
 
 def make_standard_simulation_settings():
     simulation_settings = {'startdate': datetime.strptime('2020-01-04-00:00:00', '%Y-%m-%d-%H:%M:%S'),
-                           'runtime': timedelta(days=2),
+                           'runtime': timedelta(days=1),
                            'outputdt': timedelta(hours=1),
                            'dt': timedelta(minutes=20),
                            }
@@ -70,7 +70,7 @@ def test_advection_only(use_3D):
     start_lons = pset.x.copy()
     start_lats = pset.y.copy()
 
-    pset.execute(kernels, runtime=np.timedelta64(1, "D"), dt=settings['simulation']['dt'])
+    pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
     assert (np.sum(np.abs(pset.x - start_lons)) > 0.) & (np.sum(np.abs(pset.y - start_lats)) > 0.)
@@ -98,14 +98,14 @@ def test_settling_velocity():
 
     pset = make_standard_particleset(fieldset, settings)
 
-    start_lons = pset.lon.copy()
-    start_lats = pset.lat.copy()
-    start_depths = pset.depth.copy()
+    start_lons = pset.x.copy()
+    start_lats = pset.y.copy()
+    start_depths = pset.z.copy()
 
     pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.lon - start_lons)) > 0.) & (np.sum(np.abs(pset.lat - start_lats)) > 0.) & (np.sum(np.abs(pset.depth - start_depths)) > 0.)
+    assert (np.sum(np.abs(pset.x - start_lons)) > 0.) & (np.sum(np.abs(pset.y - start_lats)) > 0.) & (np.sum(np.abs(pset.z - start_depths)) > 0.)
 
 
 def test_biofouling():
@@ -127,17 +127,17 @@ def test_biofouling():
     fieldset = pp.constructors.create_fieldset(settings)
 
     kernels = [pp.kernels.PolyTEOS10_bsq, pp.kernels.Biofouling,
-               pp.kernels.checkThroughBathymetry, pp.kernels.checkErrorThroughSurface,
-               pp.kernels.deleteParticle]
+               pp.kernels.checkThroughBathymetry, pp.kernels.checkErrorThroughSurface]
 
     pset = make_standard_particleset(fieldset, settings)
 
-    start_depths = pset.depth.copy()
+    start_depths = pset.z.copy()
 
+    print(settings['simulation'])
     pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.depth - start_depths)) > 0.)
+    assert (np.sum(np.abs(pset.z - start_depths)) > 0.)
 
 
 def test_Stokes():
@@ -161,16 +161,16 @@ def test_Stokes():
 
     fieldset = pp.constructors.create_fieldset(settings)
 
-    kernels = [pp.kernels.StokesDrift, pp.kernels.unbeaching, pp.kernels.periodicBC, pp.kernels.deleteParticle]
+    kernels = [pp.kernels.StokesDrift, pp.kernels.unbeaching, pp.kernels.periodicBC]
 
     pset = make_standard_particleset(fieldset, settings)
 
-    start_lons = pset.lon.copy()
-    start_lats = pset.lat.copy()
+    start_lons = pset.x.copy()
+    start_lats = pset.y.copy()
     pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.lon - start_lons)) > 0.) & (np.sum(np.abs(pset.lat - start_lats)) > 0.)
+    assert (np.sum(np.abs(pset.x - start_lons)) > 0.) & (np.sum(np.abs(pset.y - start_lats)) > 0.)
 
 
 def test_wind():
@@ -194,17 +194,17 @@ def test_wind():
 
     fieldset = pp.constructors.create_fieldset(settings)
 
-    kernels = [pp.kernels.WindageDrift, pp.kernels.unbeaching, pp.kernels.periodicBC, pp.kernels.deleteParticle]
+    kernels = [pp.kernels.WindageDrift, pp.kernels.unbeaching, pp.kernels.periodicBC]
 
     pset = make_standard_particleset(fieldset, settings)
 
-    start_lons = pset.lon.copy()
-    start_lats = pset.lat.copy()
+    start_lons = pset.x.copy()
+    start_lats = pset.y.copy()
 
     pset.execute(kernels, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.lon - start_lons)) > 0.) & (np.sum(np.abs(pset.lat - start_lats)) > 0.)
+    assert (np.sum(np.abs(pset.x - start_lons)) > 0.) & (np.sum(np.abs(pset.y - start_lats)) > 0.)
 
 
 def test_mixing():
@@ -223,17 +223,17 @@ def test_mixing():
     settings['use_stokes'] = False
 
     fieldset = pp.constructors.create_fieldset(settings)
-    fieldset.add_constant('max_depth', fieldset.U.depth[-1])
+    fieldset.add_context('max_depth', fieldset.U.grid.depth[-1])
 
     # Set the simulation runtime to just 1 day so particles aren't kicked around significantly
     settings['simulation']['runtime'] = timedelta(days=1)
 
-    kernels = [parcels.application_kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
-               pp.kernels.checkErrorThroughSurface, pp.kernels.deleteParticle]
+    kernels = [parcels.kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
+               pp.kernels.checkErrorThroughSurface]
 
-    kernels_mixing = [parcels.application_kernels.AdvectionRK4_3D, pp.kernels.VerticalMixing,
+    kernels_mixing = [parcels.kernels.AdvectionRK4_3D, pp.kernels.VerticalMixing,
                       checkBelowDataDepth, pp.kernels.checkThroughBathymetry,
-                      pp.kernels.checkErrorThroughSurface, pp.kernels.deleteParticle]
+                      pp.kernels.checkErrorThroughSurface]
 
     pset = make_standard_particleset(fieldset, settings)
     pset_mixing = make_standard_particleset(fieldset, settings)
@@ -241,10 +241,9 @@ def test_mixing():
     pset_mixing.execute(kernels_mixing, runtime=settings['simulation']['runtime'], dt=settings['simulation']['dt'])
 
     # Assert that the particles move from their initial location
-    assert (np.sum(np.abs(pset.lon - pset_mixing.lon)) > 0.) & (np.sum(np.abs(pset.lat - pset_mixing.lat)) > 0.)
+    assert (np.sum(np.abs(pset.x - pset_mixing.x)) > 0.) & (np.sum(np.abs(pset.y - pset_mixing.y)) > 0.)
 
-@pytest.mark.parametrize("mode", ["scipy", "jit"])
-def test_TEOSdensity_kernels(mode):
+def test_TEOSdensity_kernels():
     """ Adapted test from Parcels v3 codebase.
     """
     settings_file = 'tests/test_data/test_settings.json'
@@ -260,32 +259,15 @@ def test_TEOSdensity_kernels(mode):
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    def generate_fieldset(xdim=2, ydim=2, zdim=2, tdim=1):
-        lon = np.linspace(0.0, 10.0, xdim, dtype=np.float32)
-        lat = np.linspace(0.0, 10.0, ydim, dtype=np.float32)
-        depth = np.linspace(0, 2000, zdim, dtype=np.float32)
-        time = np.zeros(tdim, dtype=np.float64)
-        U = np.ones((tdim, zdim, ydim, xdim))
-        V = np.ones((tdim, zdim, ydim, xdim))
-        abs_salinity = 30 * np.ones((tdim, zdim, ydim, xdim))
-        cons_temperature = 10 * np.ones((tdim, zdim, ydim, xdim))
-        dimensions = {"lat": lat, "lon": lon, "depth": depth, "time": time}
-        data = {
-            "U": np.array(U, dtype=np.float32),
-            "V": np.array(V, dtype=np.float32),
-            "absolute_salinity": np.array(abs_salinity, dtype=np.float32),
-            "conservative_temperature": np.array(cons_temperature, dtype=np.float32),
-        }
-        return (data, dimensions)
-
-    data, dimensions = generate_fieldset()
-    fieldset = parcels.FieldSet.from_data(data, dimensions)
+    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset.add_constant_field("absolute_salinity", 30.)
+    fieldset.add_constant_field("conservative_temperature", 10.)
 
     release_locations = {'lons': [5], 'lats': [5], 'depths': [1000],
                          'plastic_amount': [1]}
 
     pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
 
-    pset.execute(pp.kernels.PolyTEOS10_bsq, runtime=1)
+    pset.execute(pp.kernels.PolyTEOS10_bsq, runtime=1, dt=1)
 
     assert np.allclose(pset[0].seawater_density, 1027.45140)

@@ -26,7 +26,7 @@ def StokesDrift(particles, fieldset):
     Parameter Requirements
     ----------
     fieldset :
-        - `fieldset.Stokes_U` and `fieldset.Stokes_V`, the Stokes drift velocity fields. Units [m s-1]
+        - `fieldset.Stokes_UV`, the Stokes drift velocity fields as a vector field. Units [m s-1]
         - `fieldset.wave_Tp`, the peak wave period field (:math:`T_p`). Units [s].
 
     Kernel Requirements
@@ -50,12 +50,11 @@ def StokesDrift(particles, fieldset):
     # Only compute displacements if the peak wave period is large enough and the particle is in the water
     mask = (T_p > 1E-14) & (particles.z < local_bathymetry)
     ptcls = particles[mask]
-    if len(ptcls) > 0:
+    if np.any(mask) > 0:
         T_p = T_p[mask]
 
         # Sample the U / V components of Stokes drift
-        stokes_U = fieldset.Stokes_U[ptcls.t, np.zeros_like(ptcls.z), ptcls.y, ptcls.x]
-        stokes_V = fieldset.Stokes_V[ptcls.t, np.zeros_like(ptcls.z), ptcls.y, ptcls.x]
+        stokes_U, stokes_V = fieldset.Stokes_UV[ptcls.t, np.zeros_like(ptcls.z), ptcls.y, ptcls.x]
 
         # Peak wave frequency
         omega_p = 2. * np.pi / T_p
@@ -96,7 +95,7 @@ def WindageDrift(particles, fieldset):
     particles :
         - wind_coefficient - the particle windage coefficient in decimals (usually taken to be between 0.01 and 0.05, depending on particle size).
     fieldset :
-        - `fieldset.Wind_U` and `fieldset.Wind_V`, the wind velocity field at 10m height above sea surface. Units [m s-1].
+        - `fieldset.Wind_UV` the wind velocity field at 10m height above sea surface as a vector field. Units [m s-1].
 
     Kernel Requirements
     ----------
@@ -112,10 +111,9 @@ def WindageDrift(particles, fieldset):
     # Use a basic approach to only apply windage to particle in the ocean
     mask = (particles.z < 0.5*particles.plastic_diameter) & (ocean_speed > 1E-14)
     ptcls = particles[mask]
-    if len(ptcls) > 0:
+    if np.any(mask) > 0:
         # Sample the U / V components of wind
-        wind_U = fieldset.Wind_U[ptcls]
-        wind_V = fieldset.Wind_V[ptcls]
+        wind_U, wind_V = fieldset.Wind_UV[ptcls]
 
         # Compute particle displacement
         ptcls.dx += ptcls.wind_coefficient * (wind_U - ocean_U[mask]) * ptcls.dt  # noqa
@@ -378,7 +376,7 @@ def Biofouling(particles, fieldset):
     particles.settling_velocity = settling_velocity
 
     # Update particle depth
-    particle.dz += particle.settling_velocity * particles.dt  # noqa
+    particles.dz += particles.settling_velocity * particles.dt  # noqa
 
 
 def PolyTEOS10_bsq(particles, fieldset):
@@ -586,8 +584,7 @@ def unbeaching(particles, fieldset):
     Parameter Requirements
     ----------
     Fieldset:
-        - `fieldset.unbeach_U` - The zonal unbeaching velocity. Units [m s-1].
-        - `fieldset.unbeach_V` - The meridional unbeaching velocity. Units [m s-1].
+        - `fieldset.unbeach_UV` - The unbeaching velocity field as a vector field. Units [m s-1].
 
     Kernel Requirements
     ----------
@@ -599,8 +596,7 @@ def unbeaching(particles, fieldset):
     (vel_u, vel_v) = fieldset.UV[particles.t, particles.z + particles.dz, particles.y + particles.dy, particles.x + particles.dx]  # noqa
 
     ptcls = particles[(np.abs(vel_u) < 1e-14) & (np.abs(vel_v) < 1e-14)]
-    U_ub = fieldset.unbeach_U[ptcls.t, ptcls.z + ptcls.dz, ptcls.y + ptcls.dy, ptcls.x + ptcls.dx]  # noqa
-    V_ub = fieldset.unbeach_V[ptcls.t, ptcls.z + ptcls.dz, ptcls.y + ptcls.dy, ptcls.x + ptcls.dx]  # noqa
+    U_ub, V_ub = fieldset.unbeach_UV[ptcls.t, ptcls.z + ptcls.dz, ptcls.y + ptcls.dy, ptcls.x + ptcls.dx]  # noqa
 
     dlon = U_ub * ptcls.dt
     dlat = V_ub * ptcls.dt
@@ -809,6 +805,21 @@ def checkErrorThroughSurface(particles, fieldset):
     ptcls.dz = 0. # Set the summed displacement to 0.
     ptcls.dz += fieldset.z_start - ptcls.z # Set dz so that final z is the ocean surface
     ptcls.state = StatusCode.Success
+
+def deleteParticle(particles, fieldset):
+    """General error kernel.
+
+    Description
+    ----------
+    Kernel to delete a particle if it throws an error other than `ErrorThroughSurface`.
+
+    Kernel Requirements
+    ----------
+    Order of Operations:
+        This kernel should be performed after all other movement kernels, as it is an error kernel.
+    """
+    any_error = (particles.state >= 50) & (particles.state != StatusCode.ErrorThroughSurface)
+    particles[any_error].state = StatusCode.Delete
 
 
 def delete_particle_interp(particle, fieldset, time):
