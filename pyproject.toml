@@ -122,6 +122,7 @@ cartopy = "*"
 python-dateutil = "<3"
 netcdf4 = "*"
 h5py = "*"
+ipywidgets = ">=8.1.9,<9"
 
 [tool.pixi.feature.dev.dependencies]
 proj = "*"
