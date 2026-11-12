@@ -117,7 +117,8 @@ def create_copernicusmarine_dataset(data_request):
             start_datetime=data_request['time'][0],
             end_datetime=data_request['time'][1],
             minimum_depth=data_request['depth'][0],
-            maximum_depth=data_request['depth'][1]
+            maximum_depth=data_request['depth'][1],
+            coordinates_selection_method='outside',
         )
     return ds
 
@@ -408,7 +409,7 @@ def create_particleset(fieldset, settings, release_locations):
     if 'depths' in release_locations.keys():
         depths = release_locations['depths']
     else:
-        depths = np.full_like(lons, 0.)
+        depths = np.full_like(lons, fieldset.U.grid.depth[0])
 
     # Set particle properties
     plastic_densities = np.full(lons.shape, settings['plastictype']['plastic_density'])
