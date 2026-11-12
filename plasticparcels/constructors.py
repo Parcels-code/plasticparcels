@@ -277,11 +277,12 @@ def create_fieldset(settings):
             for key in settings['bgc']['variables'].keys():
                 ds_bgc.append(ds_dict[key])
             ds_bgc = xr.merge(ds_bgc)
-            bio_fieldset = parcels.FieldSet.from_xarray_dataset(ds_bgc,settings['bgc']['variables'], settings['bgc']['dimensions'], mesh='spherical')
-
-            # Add the fields to the main fieldset
-            for field in bio_fieldset.get_fields():
-                fieldset.add_field(field)
+            fields = {
+                key: ds_bgc[variable]
+                for key, variable in settings['bgc']['variables'].items()
+            }
+            ds_bgc = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            fieldset += FieldSet.from_sgrid_conventions(ds_bgc)
         else:
             raise ValueError('No valid biogeochemical model information found in settings file.')
 
