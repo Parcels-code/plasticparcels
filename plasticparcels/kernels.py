@@ -304,7 +304,14 @@ def Biofouling(particles, fieldset):
     number_concentration_total = number_concentration_diatoms + number_concentration_nanophytoplankton  # conversion from [mmol C m-3] to [mg C m-3] to [no. m-3]
 
     # Compute primary production
-    primary_production_per_cell = total_primary_production_of_phyto / number_concentration_total  # primary productivity per cell, in mg C / cell / day
+    zero_concentration = number_concentration_total == 0
+    primary_production_per_cell = np.divide(
+        total_primary_production_of_phyto,
+        number_concentration_total,
+        out=np.zeros_like(number_concentration_total),
+        where=~zero_concentration,
+    )  # primary productivity per cell, in mg C / cell / day
+    # primary_production_per_cell = total_primary_production_of_phyto / number_concentration_total
     primary_production_numcell_per_cell = primary_production_per_cell / median_mg_carbon_per_cell  # primary productivity in terms of amount of cells per cell, in cells / cell / day
     primary_production_numcell_per_cell = np.maximum(primary_production_numcell_per_cell, 0.)  # Ensure non-negative
 
@@ -366,7 +373,7 @@ def Biofouling(particles, fieldset):
         dimensionless_diameter ** 2. / 5832.],
         default=10. ** (-3.76715 + 1.92944 * log_D - 0.09815 * log_D ** 2.
                         - 0.00575 * log_D ** 3. + 0.00056 * log_D ** 4.),  # Eq. (9) in [1]
-)
+    )
 
     # Compute the settling velocity of the particle using Eq. (5) from [1] (solving for the settling velocity)
     sign_of_density_difference = np.copysign(1., normalised_density_difference)
@@ -802,7 +809,7 @@ def checkErrorThroughSurface(particles, fieldset):
         This kernel should be performed after all other movement kernels, as it is an error kernel.
     """
     ptcls = particles[particles.state == StatusCode.ErrorThroughSurface]
-    ptcls.dz = 0. # Set the summed displacement to 0.
+    ptcls.dz = np.minimum(ptcls.dz, 0.) # Set the summed displacement to 0 if negative.
     ptcls.dz += fieldset.z_start - ptcls.z # Set dz so that final z is the ocean surface
     ptcls.state = StatusCode.Success
 
