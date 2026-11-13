@@ -298,11 +298,6 @@ def create_fieldset(settings):
             ds_stokes = xr.open_mfdataset(stokesfiles)
             ds_stokes = ds_stokes.rename({"longitude": "lon", "latitude": "lat"})
             ds_stokes = ds_stokes.isel(lat=slice(None, None, -1))
-            fields = {
-                key: ds_stokes[variable]
-                for key, variable in settings['stokes']['variables'].items()
-            }
-            ds_stokes = parcels.convert.nemo_to_sgrid(fields=fields)
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -324,13 +319,13 @@ def create_fieldset(settings):
             for key in settings['stokes']['variables'].keys():
                 ds_stokes.append(ds_dict[key])
             ds_stokes = xr.merge(ds_stokes)
-            fields = {
-                key: ds_stokes[variable]
-                for key, variable in settings['stokes']['variables'].items()
-            }
-            ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         else:
             raise ValueError('No valid Stokes drift model information found in settings file.')
+        fields = {
+            key: ds_stokes[variable]
+            for key, variable in settings['stokes']['variables'].items()
+        }
+        ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Stokes_UV": ('Stokes_U', 'Stokes_V')}
         fieldset += FieldSet.from_sgrid_conventions(ds_stokes, vector_fields=vector_fields)
 
