@@ -21,7 +21,7 @@ classifiers = [
     "Intended Audience :: Education",
 ]
 dependencies = [
-    "parcels >= 4.0.2",
+    "parcels >= 4.0.3",
     "shapely",
     "geopandas",
     "copernicusmarine > 2.1",
@@ -108,7 +108,6 @@ convention = "numpy"
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "win-64", "linux-64"]
-exclude-newer = "7d"
 
 [tool.pixi.pypi-dependencies]
 plasticparcels = { path = ".", editable = true }

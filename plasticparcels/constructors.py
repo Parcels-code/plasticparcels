@@ -73,11 +73,6 @@ def create_hydrodynamic_fieldset(settings):
     bathymetry_mesh = os.path.join(settings['ocean']['directory'], settings['ocean']['bathymetry_mesh'])
     ds_bathy = xr.open_dataset(bathymetry_mesh)[settings['ocean']['bathymetry_variables']['bathymetry']]
 
-    # TODO can be removed after https://github.com/Parcels-code/Parcels/pull/3051 is released
-    ds_bathy = ds_bathy.expand_dims({"time": [0]}, axis=0)
-    ds_bathy = ds_bathy.expand_dims({"depth": [0]}, axis=1)
-    ds_bathy = ds_bathy.isel(t=0)
-
     ds_bathy = parcels.convert.nemo_to_sgrid(fields={'bathymetry': ds_bathy}, coords=ds_coords)
     fieldset += FieldSet.from_sgrid_conventions(ds_bathy)
 
@@ -298,6 +293,8 @@ def create_fieldset(settings):
             ds_stokes = xr.open_mfdataset(stokesfiles)
             ds_stokes = ds_stokes.rename({"longitude": "lon", "latitude": "lat"})
             ds_stokes = ds_stokes.isel(lat=slice(None, None, -1))
+            ds_stokes.lon.attrs["axis"] = "X"
+            ds_stokes.lat.attrs["axis"] = "Y"
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -338,11 +335,8 @@ def create_fieldset(settings):
             ds_wind = xr.open_mfdataset(windfiles)
             ds_wind = ds_wind.rename({'longitude': 'lon', 'latitude': 'lat'})
             ds_wind = ds_wind.isel(lat=slice(None, None, -1))
-            fields = {
-                key: ds_wind[variable]
-                for key, variable in settings['wind']['variables'].items()
-            }
-            ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
+            ds_wind.lon.attrs["axis"] = "X"
+            ds_wind.lat.attrs["axis"] = "Y"
         elif 'dataset_id' in settings['wind'].keys():
             # Create the wind fieldset from copernicusmarine
             wind_dict = settings['wind']
@@ -364,13 +358,13 @@ def create_fieldset(settings):
             for key in settings['wind']['variables'].keys():
                 ds_wind.append(ds_dict[key])
             ds_wind = xr.merge(ds_wind)
-            fields = {
-                key: ds_wind[variable]
-                for key, variable in settings['wind']['variables'].items()
-            }
-            ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         else:
             raise ValueError('No valid wind model information found in settings file.')
+        fields = {
+            key: ds_wind[variable]
+            for key, variable in settings['wind']['variables'].items()
+        }
+        ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
         fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
 
