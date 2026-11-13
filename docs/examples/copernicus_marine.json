@@ -65,6 +65,17 @@
                        "lat": "latitude",
                        "time": "time"}
     },
+    "wind": {
+        "dataset_id": {"Wind_U": "cmems_obs-wind_glo_phy_my_l4_0.125deg_PT1H",
+                       "Wind_V": "cmems_obs-wind_glo_phy_my_l4_0.125deg_PT1H"},
+        "variables": {
+            "Wind_U": "northward_wind",
+            "Wind_V": "eastward_wind"},
+        "dimensions": {"lon": "longitude",
+                       "lat": "latitude",
+                       "time": "time"}
+    },
+
     "simulation": {
         "start_date": null,
         "runtime": null,
