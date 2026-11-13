@@ -8,10 +8,6 @@ def make_simple_fieldset():
     from parcels._datasets.structured.generated import simple_UV_dataset
     ds = simple_UV_dataset()
 
-    # TODO can be removed after Parcels v4.0.3 is released
-    ds.lon.attrs["units"] = "degrees_east"
-    ds.lat.attrs["units"] = "degrees_north"
-
     return parcels.FieldSet.from_sgrid_conventions(ds)
 
 
