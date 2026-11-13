@@ -118,7 +118,6 @@ def create_copernicusmarine_dataset(data_request):
             end_datetime=data_request['time'][1],
             minimum_depth=data_request['depth'][0],
             maximum_depth=data_request['depth'][1],
-            coordinates_selection_method='outside',
         )
     return ds
 
@@ -299,6 +298,11 @@ def create_fieldset(settings):
             ds_stokes = xr.open_mfdataset(stokesfiles)
             ds_stokes = ds_stokes.rename({"longitude": "lon", "latitude": "lat"})
             ds_stokes = ds_stokes.isel(lat=slice(None, None, -1))
+            fields = {
+                key: ds_stokes[variable]
+                for key, variable in settings['stokes']['variables'].items()
+            }
+            ds_stokes = parcels.convert.nemo_to_sgrid(fields=fields)
         elif 'dataset_id' in settings['stokes'].keys():
             # Create the stokes fieldset from copernicusmarine
             stokes_dict = settings['stokes']
@@ -320,13 +324,13 @@ def create_fieldset(settings):
             for key in settings['stokes']['variables'].keys():
                 ds_stokes.append(ds_dict[key])
             ds_stokes = xr.merge(ds_stokes)
+            fields = {
+                key: ds_stokes[variable]
+                for key, variable in settings['stokes']['variables'].items()
+            }
+            ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         else:
             raise ValueError('No valid Stokes drift model information found in settings file.')
-        fields = {
-            key: ds_stokes[variable]
-            for key, variable in settings['stokes']['variables'].items()
-        }
-        ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Stokes_UV": ('Stokes_U', 'Stokes_V')}
         fieldset += FieldSet.from_sgrid_conventions(ds_stokes, vector_fields=vector_fields)
 
@@ -339,18 +343,41 @@ def create_fieldset(settings):
             ds_wind = xr.open_mfdataset(windfiles)
             ds_wind = ds_wind.rename({'longitude': 'lon', 'latitude': 'lat'})
             ds_wind = ds_wind.isel(lat=slice(None, None, -1))
-            ds_wind = parcels.convert.copernicusmarine_to_sgrid(
-                fields={
-                    'Wind_U': ds_wind[settings['wind']['variables']['Wind_U']],
-                    'Wind_V': ds_wind[settings['wind']['variables']['Wind_V']]
-                }
-            )
-            vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
-            fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
+            fields = {
+                key: ds_wind[variable]
+                for key, variable in settings['wind']['variables'].items()
+            }
+            ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         elif 'dataset_id' in settings['wind'].keys():
-            raise NotImplementedError('Copernicus Marine wind data request not yet implemented.')
+            # Create the wind fieldset from copernicusmarine
+            wind_dict = settings['wind']
+            ds_dict = {}
+            for key in wind_dict['variables'].keys():
+                data_request = {
+                    'dataset_id': wind_dict['dataset_id'][key],
+                    'longitude': settings['simulation']['boundingbox'][:2],
+                    'latitude': settings['simulation']['boundingbox'][2:],
+                    'depth': settings['simulation']['depth_range'],
+                    'variables': [wind_dict['variables'][key]],
+                    'time': [settings['simulation']['startdate'],
+                            settings['simulation']['startdate'] + settings['simulation']['runtime']]
+                }
+                ds = create_copernicusmarine_dataset(data_request)
+                ds_dict[key] = ds
+
+            ds_wind = []
+            for key in settings['wind']['variables'].keys():
+                ds_wind.append(ds_dict[key])
+            ds_wind = xr.merge(ds_wind)
+            fields = {
+                key: ds_wind[variable]
+                for key, variable in settings['wind']['variables'].items()
+            }
+            ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         else:
             raise ValueError('No valid wind model information found in settings file.')
+        vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
+        fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
 
     # Apply unbeaching currents when Stokes/Wind can push particles into land cells
     if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
@@ -422,10 +449,10 @@ def create_particleset(fieldset, settings, release_locations):
             Variable('plastic_diameter', dtype=np.float32, initial=np.nan, to_write=False),
             Variable('plastic_density', dtype=np.float32, initial=np.nan, to_write=False),
             Variable('wind_coefficient', dtype=np.float32, initial=0., to_write=False),
-            Variable('settling_velocity', dtype=np.float64, initial=0., to_write=False),
+            Variable('settling_velocity', dtype=np.float64, initial=0., to_write=True),
             Variable('seawater_density', dtype=np.float32, initial=np.nan, to_write=False),
             Variable('absolute_salinity', dtype=np.float64, initial=np.nan, to_write=False),
-            Variable('algae_amount', dtype=np.float64, initial=0., to_write=False),
+            Variable('algae_amount', dtype=np.float64, initial=0., to_write=True),
             Variable('plastic_amount', dtype=np.float32, initial=0., to_write=True),
         ]
     )
