@@ -6,7 +6,7 @@ import xarray as xr
 import pandas as pd
 from parcels import FieldSet, ParticleSet, Variable
 from parcels._core.particle import get_default_particle
-from parcels.kernels import AdvectionRK4, AdvectionRK4_3D
+from parcels.kernels import AdvectionRK2, AdvectionRK2_3D
 import parcels
 
 from plasticparcels.kernels import GSW_density, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry, deleteParticle
@@ -542,9 +542,9 @@ def create_kernel(fieldset):
     kernels.append(GSW_density)  # To set the seawater_density variable
 
     if fieldset.use_3D:
-        kernels.append(AdvectionRK4_3D)
+        kernels.append(AdvectionRK2_3D)
     else:
-        kernels.append(AdvectionRK4)
+        kernels.append(AdvectionRK2)
 
     if not fieldset.use_biofouling and fieldset.use_3D:
         kernels.append(SettlingVelocity)

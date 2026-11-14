@@ -228,10 +228,10 @@ def test_mixing():
     # Set the simulation runtime to just 1 day so particles aren't kicked around significantly
     settings['simulation']['runtime'] = timedelta(days=1)
 
-    kernels = [parcels.kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
+    kernels = [parcels.kernels.AdvectionRK2_3D, pp.kernels.checkThroughBathymetry,
                pp.kernels.checkErrorThroughSurface]
 
-    kernels_mixing = [parcels.kernels.AdvectionRK4_3D, pp.kernels.VerticalMixing,
+    kernels_mixing = [parcels.kernels.AdvectionRK2_3D, pp.kernels.VerticalMixing,
                       checkBelowDataDepth, pp.kernels.checkThroughBathymetry,
                       pp.kernels.checkErrorThroughSurface]
 

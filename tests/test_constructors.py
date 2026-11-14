@@ -150,11 +150,11 @@ def test_create_kernel(use_3D, use_biofouling, use_stokes, use_wind, use_mixing)
     kernels = pp.constructors.create_kernel(fieldset)
 
     if use_3D:
-        assert parcels.kernels.AdvectionRK4_3D in kernels
+        assert parcels.kernels.AdvectionRK2_3D in kernels
         assert pp.kernels.checkThroughBathymetry in kernels
         assert pp.kernels.checkErrorThroughSurface in kernels
     else:
-        assert parcels.kernels.AdvectionRK4 in kernels
+        assert parcels.kernels.AdvectionRK2 in kernels
 
     if use_3D and use_biofouling:
         assert pp.kernels.Biofouling in kernels
