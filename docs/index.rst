@@ -28,22 +28,7 @@ Or downloaded from https://github.com/Parcels-code/plasticparcels
 Required Data
 ^^^^^^^^^^^^^
 
-``plasticparcels`` has been developed for use with data from the Copernicus Marine Service, and requires the following data to run:
-
-**Option A** - Using data streamed from the ``copernicusmarine`` toolkit.
-
-* ``plasticparcels``` should work seamlessly with any of the datasets available in the ``copernicusmarine`` toolkit
-
-**Option B** - Using hydrodynamic, biogeochemical and wind/wave model data from global reanalysis products
-
-* Hydrodynamic model data: `MOI GLO12 (psy4v3r1) <https://www.mercator-ocean.eu/en/solutions-expertise/accessing-digital-data/product-details/?offer=4217979b-2662-329a-907c-602fdc69c3a3&system=d35404e4-40d3-59d6-3608-581c9495d86a>`_
-* Biogeochemical model data: `MOI BIO4 (biomer4v2r1) <https://www.mercator-ocean.eu/en/solutions-expertise/accessing-digital-data/product-details/?offer=8d0c01f3-81c7-0a59-0d06-602fdf63c5b6&system=dc40b324-7de7-0732-880b-5d9dcf7d344a>`_
-* Wave data: `ECMWF ERA5 Wave <https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels>`_ (specifically, the variables ``mean_wave_period``, ``peak_wave_period``, ``u_component_stokes_drift``, and ``v_component_stokes_drift``.)
-* Wind data: `ECMWF ERA5 Wind <https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels>`_ (specifically, the variables ``10m_u_component_of_wind`` and ``10m_v_component_of_wind``)
-
-For downloading the wind and wave data, we recommend using the `CDS API <https://cds.climate.copernicus.eu/api-how-to>`_.
-
-To run the examples, you will need to update the data directories in the relevant settings ``.json`` file.
+``plasticparcels`` has been developed for use with data from the Copernicus Marine Service, and requires a `free account <https://marine.copernicus.eu/register-copernicus-marine-service>`_.
 
 Just like the ``parcels`` framework, ``plasticparcels`` can be adapted to use other hydrodynamic, biogeochemical, wave, and atmospheric models. If you require assistance, please contact us through the `Discussions page on GitHub <https://github.com/Parcels-code/plasticparcels/discussions>`_.
 
@@ -51,7 +36,9 @@ Community Guidelines
 ^^^^^^^^^^^^^^^^^^^^
 
 We welcome contributions to ``plasticparcels``, especially example workbooks and analyses for our `public examples page <https://plastic.parcels-code.org/en/latest/examples.html>`_. To contribute to the project, please submit a `pull request <https://github.com/Parcels-code/plasticparcels/pulls>`_.
+
 If you want to request a new feature, or if you find an issue or bug in the code, please open an issue in the `plasticparcels issue tracker <https://github.com/Parcels-code/plasticparcels/issues>`_.
+
 If you would like support using ``plasticparcels``, or are have any questions about your ``plasticparcels`` simulations, please start a discussion in the `plasticparcels discussion page <https://github.com/Parcels-code/plasticparcels/discussions>`_.
 
 .. toctree::
