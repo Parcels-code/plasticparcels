@@ -126,7 +126,7 @@ def test_biofouling():
 
     fieldset = pp.constructors.create_fieldset(settings)
 
-    kernels = [pp.kernels.PolyTEOS10_bsq, pp.kernels.Biofouling,
+    kernels = [pp.kernels.GSW_density, pp.kernels.Biofouling,
                pp.kernels.checkThroughBathymetry, pp.kernels.checkErrorThroughSurface]
 
     pset = make_standard_particleset(fieldset, settings)
@@ -268,6 +268,6 @@ def test_TEOSdensity_kernels():
 
     pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
 
-    pset.execute(pp.kernels.PolyTEOS10_bsq, runtime=1, dt=1)
+    pset.execute(pp.kernels.GSW_density, runtime=1, dt=1)
 
-    assert np.allclose(pset[0].seawater_density, 1027.45140)
+    assert np.allclose(pset[0].seawater_density, 1027.487)

@@ -9,7 +9,7 @@ from parcels._core.particle import get_default_particle
 from parcels.kernels import AdvectionRK4, AdvectionRK4_3D
 import parcels
 
-from plasticparcels.kernels import PolyTEOS10_bsq, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry, deleteParticle
+from plasticparcels.kernels import GSW_density, StokesDrift, WindageDrift, SettlingVelocity, Biofouling, VerticalMixing, unbeaching, periodicBC, checkErrorThroughSurface, checkThroughBathymetry, deleteParticle
 from plasticparcels.utils import select_files
 
 
@@ -539,7 +539,7 @@ def create_kernel(fieldset):
         A list of kernels used in the execution of the particle set.
     """
     kernels = []
-    kernels.append(PolyTEOS10_bsq)  # To set the seawater_density variable
+    kernels.append(GSW_density)  # To set the seawater_density variable
 
     if fieldset.use_3D:
         kernels.append(AdvectionRK4_3D)

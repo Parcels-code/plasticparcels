@@ -173,4 +173,4 @@ def test_create_kernel(use_3D, use_biofouling, use_stokes, use_wind, use_mixing)
         assert pp.kernels.unbeaching in kernels
 
     assert pp.kernels.periodicBC in kernels
-    assert pp.kernels.PolyTEOS10_bsq in kernels
+    assert pp.kernels.GSW_density in kernels
