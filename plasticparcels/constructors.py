@@ -161,6 +161,8 @@ def create_copernicus_hydrodynamic_fieldset(settings):
     }
     ds = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
     fieldset = parcels.FieldSet.from_sgrid_conventions(ds)
+    fieldset.conservative_temperature.interp_method = parcels.interpolators.XLinearInvdistLandTracer()
+    fieldset.absolute_salinity.interp_method = parcels.interpolators.XLinearInvdistLandTracer()
 
     # Create flags for custom particle behaviour
     fieldset.add_context('use_mixing', settings['use_mixing']) #TODO: check if copernicusmarine has any mixing data
@@ -277,6 +279,8 @@ def create_fieldset(settings):
             }
             ds_bgc = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
             fieldset += FieldSet.from_sgrid_conventions(ds_bgc)
+            for key in settings['bgc']['variables'].keys():
+                getattr(fieldset, key).interp_method = parcels.interpolators.XLinearInvdistLandTracer()
         else:
             raise ValueError('No valid biogeochemical model information found in settings file.')
 
@@ -325,6 +329,7 @@ def create_fieldset(settings):
         ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Stokes_UV": ('Stokes_U', 'Stokes_V')}
         fieldset += FieldSet.from_sgrid_conventions(ds_stokes, vector_fields=vector_fields)
+        fieldset.Stokes_UV.interp_method = parcels.interpolators.XFreeslip()
 
     if fieldset.use_wind: # type: ignore
         if 'wind' not in settings.keys():
@@ -367,6 +372,7 @@ def create_fieldset(settings):
         ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
         fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
+        fieldset.Wind_UV.interp_method = parcels.interpolators.XFreeslip()
 
     # Apply unbeaching currents when Stokes/Wind can push particles into land cells
     if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
@@ -392,6 +398,9 @@ def create_fieldset(settings):
         fieldset.add_context('use_unbeaching', False)
 
     fieldset.add_context('verbose_delete', settings['verbose_delete'])
+
+    fieldset.UV.interp_method = parcels.interpolators.XFreeslip()
+    fieldset.UVW.interp_method = parcels.interpolators.XFreeslip()
 
     fieldset.to_chunk_cached_arrays()
     return fieldset
