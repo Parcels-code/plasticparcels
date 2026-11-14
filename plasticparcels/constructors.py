@@ -329,7 +329,7 @@ def create_fieldset(settings):
         ds_stokes = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Stokes_UV": ('Stokes_U', 'Stokes_V')}
         fieldset += FieldSet.from_sgrid_conventions(ds_stokes, vector_fields=vector_fields)
-        fieldset.Stokes_UV.interp_method = parcels.interpolators.XFreeslip()
+        # fieldset.Stokes_UV.interp_method = parcels.interpolators.XFreeslip()  # TODO fix freeslip
 
     if fieldset.use_wind: # type: ignore
         if 'wind' not in settings.keys():
@@ -372,7 +372,7 @@ def create_fieldset(settings):
         ds_wind = parcels.convert.copernicusmarine_to_sgrid(fields=fields)
         vector_fields = {"Wind_UV": ('Wind_U', 'Wind_V')}
         fieldset += parcels.FieldSet.from_sgrid_conventions(ds_wind, vector_fields=vector_fields)
-        fieldset.Wind_UV.interp_method = parcels.interpolators.XFreeslip()
+        # fieldset.Wind_UV.interp_method = parcels.interpolators.XFreeslip()  # TODO fix freeslip
 
     # Apply unbeaching currents when Stokes/Wind can push particles into land cells
     if (fieldset.use_stokes or fieldset.use_wind > 0) and 'directory' in settings['ocean'].keys(): # type: ignore
@@ -399,8 +399,9 @@ def create_fieldset(settings):
 
     fieldset.add_context('verbose_delete', settings['verbose_delete'])
 
-    fieldset.UV.interp_method = parcels.interpolators.XFreeslip()
-    fieldset.UVW.interp_method = parcels.interpolators.XFreeslip()
+    # TODO fix freeslip
+    # fieldset.UV.interp_method = parcels.interpolators.XFreeslip()
+    # fieldset.UVW.interp_method = parcels.interpolators.XFreeslip()
 
     fieldset.to_chunk_cached_arrays()
     return fieldset
