@@ -123,6 +123,8 @@ netcdf4 = "*"
 h5py = "*"
 ipywidgets = ">=8.1.9,<9"
 cmocean = ">=4.0.3,<5"
+gsw = ">=3.6.23,<4"
+pandoc = ">=3.14,<4"
 
 [tool.pixi.feature.dev.dependencies]
 proj = "*"
