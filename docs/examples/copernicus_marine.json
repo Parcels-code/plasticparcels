@@ -1,6 +1,5 @@
 {
     "use_3D": false,
-    "allow_time_extrapolation": false,
     "verbose_delete": false,
     "use_mixing": false,
     "use_biofouling": false,
