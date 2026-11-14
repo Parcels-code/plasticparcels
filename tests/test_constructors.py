@@ -31,10 +31,10 @@ def make_standard_plastictype_settings():
 # Test the create_hydrodynamic_fieldset() function
 def test_create_hydrodynamic_fieldset():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
     settings['simulation'] = make_standard_simulation_settings()
 
-    fieldset = pp.constructors.create_hydrodynamic_fieldset(settings)
+    fieldset = pp.create_hydrodynamic_fieldset(settings)
 
     assert isinstance(fieldset, parcels.FieldSet)
 
@@ -47,8 +47,8 @@ def test_create_hydrodynamic_fieldset():
 @pytest.mark.parametrize('use_mixing', [True, False])
 def test_create_fieldset(use_3D, use_biofouling, use_stokes, use_wind, use_mixing):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.load_settings(settings_file)
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
 
@@ -58,7 +58,7 @@ def test_create_fieldset(use_3D, use_biofouling, use_stokes, use_wind, use_mixin
     settings['use_wind'] = use_wind
     settings['use_mixing'] = use_mixing
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
 
     assert isinstance(fieldset, parcels.FieldSet)
 
@@ -67,8 +67,8 @@ def test_create_fieldset(use_3D, use_biofouling, use_stokes, use_wind, use_mixin
 @pytest.mark.parametrize('plastic_amount', [None, 1])
 def test_create_particleset(plastic_amount):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.load_settings(settings_file)
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
 
@@ -80,7 +80,7 @@ def test_create_particleset(plastic_amount):
         release_locations = {'lons': [18], 'lats': [35], 'plastic_amount': [plastic_amount]}
 
     fieldset = make_simple_fieldset()
-    pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
+    pset = pp.create_particleset(fieldset, settings, release_locations)
 
     assert isinstance(pset, parcels.ParticleSet)
 
@@ -89,8 +89,8 @@ def test_create_particleset(plastic_amount):
 @pytest.mark.parametrize('initialisation_map', ['coastal', 'fisheries', 'rivers'])
 def test_create_particleset_from_map(initialisation_map):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.load_settings(settings_file)
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
 
@@ -101,7 +101,7 @@ def test_create_particleset_from_map(initialisation_map):
                            }
 
     fieldset = make_simple_fieldset()
-    pset = pp.constructors.create_particleset_from_map(fieldset, settings)
+    pset = pp.create_particleset_from_map(fieldset, settings)
 
     assert isinstance(pset, parcels.ParticleSet)
 
@@ -110,8 +110,8 @@ def test_create_particleset_from_map(initialisation_map):
 @pytest.mark.parametrize('concentration_type', ['Beach', 'Ocean'])
 def test_create_particleset_from_map_concentrations(concentration_type):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.load_settings(settings_file)
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
 
@@ -122,7 +122,7 @@ def test_create_particleset_from_map_concentrations(concentration_type):
                            }
 
     fieldset = make_simple_fieldset()
-    pset = pp.constructors.create_particleset_from_map(fieldset, settings)
+    pset = pp.create_particleset_from_map(fieldset, settings)
 
     assert isinstance(pset, parcels.ParticleSet)
 
@@ -135,8 +135,8 @@ def test_create_particleset_from_map_concentrations(concentration_type):
 @pytest.mark.parametrize('use_mixing', [True, False])
 def test_create_kernel(use_3D, use_biofouling, use_stokes, use_wind, use_mixing):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.load_settings(settings_file)
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
 
@@ -146,8 +146,8 @@ def test_create_kernel(use_3D, use_biofouling, use_stokes, use_wind, use_mixing)
     settings['use_wind'] = use_wind
     settings['use_mixing'] = use_mixing
 
-    fieldset = pp.constructors.create_fieldset(settings)
-    kernels = pp.constructors.create_kernel(fieldset)
+    fieldset = pp.create_fieldset(settings)
+    kernels = pp.create_kernel(fieldset)
 
     if use_3D:
         assert parcels.kernels.AdvectionRK2_3D in kernels

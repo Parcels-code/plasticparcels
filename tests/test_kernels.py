@@ -27,7 +27,7 @@ def make_standard_particleset(fieldset, settings):
     # Generate a particleset that has particles in the test domain
     release_locations = {'lons': [18, 18.25, 18.5], 'lats': [35, 35, 35],
                          'plastic_amount': [1, 1, 1]}
-    pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
+    pset = pp.create_particleset(fieldset, settings, release_locations)
 
     return pset
 
@@ -44,7 +44,7 @@ def checkBelowDataDepth(particles, fieldset):
 @pytest.mark.parametrize('use_3D', [True, False])
 def test_advection_only(use_3D):
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -58,7 +58,7 @@ def test_advection_only(use_3D):
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
     if use_3D:
         kernels = [parcels.kernels.AdvectionRK4_3D, pp.kernels.checkThroughBathymetry,
                    pp.kernels.checkErrorThroughSurface,]
@@ -78,7 +78,7 @@ def test_advection_only(use_3D):
 
 def test_settling_velocity():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -92,9 +92,9 @@ def test_settling_velocity():
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
 
-    kernels = pp.constructors.create_kernel(fieldset)
+    kernels = pp.create_kernel(fieldset)
 
     pset = make_standard_particleset(fieldset, settings)
 
@@ -110,7 +110,7 @@ def test_settling_velocity():
 
 def test_biofouling():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -124,7 +124,7 @@ def test_biofouling():
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
 
     kernels = [pp.kernels.GSW_density, pp.kernels.Biofouling,
                pp.kernels.checkThroughBathymetry, pp.kernels.checkErrorThroughSurface]
@@ -142,10 +142,10 @@ def test_biofouling():
 
 def test_Stokes():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     # Required for the unbeaching kernel
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -159,7 +159,7 @@ def test_Stokes():
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
 
     kernels = [pp.kernels.StokesDrift, pp.kernels.unbeaching, pp.kernels.periodicBC]
 
@@ -175,10 +175,10 @@ def test_Stokes():
 
 def test_wind():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     # Required for the unbeaching kernel
-    settings = pp.utils.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
+    settings = pp.download_plasticparcels_dataset('NEMO0083', settings, 'input_data')
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -192,7 +192,7 @@ def test_wind():
     settings['use_stokes'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
 
     kernels = [pp.kernels.WindageDrift, pp.kernels.unbeaching, pp.kernels.periodicBC]
 
@@ -209,7 +209,7 @@ def test_wind():
 
 def test_mixing():
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -222,7 +222,7 @@ def test_mixing():
     settings['use_biofouling'] = False
     settings['use_stokes'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
     fieldset.add_context('max_depth', fieldset.U.grid.depth[-1])
 
     # Set the simulation runtime to just 1 day so particles aren't kicked around significantly
@@ -247,7 +247,7 @@ def test_TEOSdensity_kernels():
     """ Adapted test from Parcels v3 codebase.
     """
     settings_file = 'tests/test_data/test_settings.json'
-    settings = pp.utils.load_settings(settings_file)
+    settings = pp.load_settings(settings_file)
 
     settings['simulation'] = make_standard_simulation_settings()
     settings['plastictype'] = make_standard_plastictype_settings()
@@ -259,14 +259,14 @@ def test_TEOSdensity_kernels():
     settings['use_wind'] = False
     settings['use_mixing'] = False
 
-    fieldset = pp.constructors.create_fieldset(settings)
+    fieldset = pp.create_fieldset(settings)
     fieldset.add_constant_field("absolute_salinity", 30.)
     fieldset.add_constant_field("conservative_temperature", 10.)
 
     release_locations = {'lons': [5], 'lats': [5], 'depths': [1000],
                          'plastic_amount': [1]}
 
-    pset = pp.constructors.create_particleset(fieldset, settings, release_locations)
+    pset = pp.create_particleset(fieldset, settings, release_locations)
 
     pset.execute(pp.kernels.GSW_density, runtime=1, dt=1)
 
