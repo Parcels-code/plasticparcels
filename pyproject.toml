@@ -142,5 +142,10 @@ docs-build = {cmd = "make html", cwd = "docs", description = "Build the docs."}
 
 
 [tool.pixi.environments]
-default = ["dev", "docs"]
+default = ["dev", "docs", "pre-commit"]
 
+[tool.pixi.feature.pre-commit.dependencies]
+pre-commit = ">=4.7.0,<5"
+
+[tool.pixi.feature.pre-commit.tasks]
+pre-commit = { cmd = "pre-commit run --all-files", description = "Run all pre-commit hooks." }
