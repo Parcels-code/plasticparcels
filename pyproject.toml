@@ -108,6 +108,8 @@ convention = "numpy"
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "win-64", "linux-64"]
+# exclude-newer = "7d"  # TODO commented because v4.0.3 was released too recently
+requires-pixi = ">=0.82.1"
 
 [tool.pixi.pypi-dependencies]
 plasticparcels = { path = ".", editable = true }
